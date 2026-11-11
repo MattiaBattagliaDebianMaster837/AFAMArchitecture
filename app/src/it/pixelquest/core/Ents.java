@@ -356,7 +356,7 @@ public final class Ents {
         public void update() {
             Player p = L.player;
             if (Math.abs(p.cx() - cx()) < 40 && Math.abs(p.cy() - cy()) < 60 && idx < L.def.hints.length) {
-                L.hint = L.def.hints[idx];
+                L.hint = L.game.hintText(L.def.hints[idx]);
                 L.hintT = Math.max(L.hintT, 12);
             }
         }

@@ -57,6 +57,7 @@ public class Sim {
         else if (sc.equals("boss")) boss(Integer.parseInt(args[2]));
         else if (sc.equals("fuzz")) fuzz(Integer.parseInt(args[2]));
         else if (sc.equals("jumps")) jumps();
+        else if (sc.equals("controls")) controls();
         System.out.println("done");
     }
 
@@ -357,6 +358,131 @@ public class Sim {
             for (int i = 0; i < 120 && !(p.onGround && i > 3); i++) { l.update(in(0, true, false)); apex = Math.min(apex, p.y); }
             System.out.println("  standing jump (hold) rise=" + (y0 - apex));
         }
+    }
+
+    static void startLevel(int idx) throws Exception {
+        g.save.unlocked = 15;
+        Level l = new Level(g, Levels.get(idx), false);
+        g.level = l;
+        java.lang.reflect.Field f = Game.class.getDeclaredField("screen");
+        f.setAccessible(true);
+        f.setInt(g, Game.PLAY);
+        keys(0, false, false, false);
+        step(5);
+    }
+
+    static void check(String what, boolean ok) {
+        System.out.println((ok ? "PASS " : "FAIL ") + what);
+    }
+
+    /** Touch-control responsiveness checks driven through the real TouchControls. */
+    static void controls() throws Exception {
+        TouchControls tc = g.touch;
+        int W = g.W, H = g.H;
+        // 1) ultra-short tap on A in the screen corner (down+up before the next frame) must jump
+        startLevel(0);
+        Player p = g.level.player;
+        float y0 = p.y;
+        tc.down(1, W - 3, H - 3);
+        tc.up(1);
+        step(1);
+        check("corner tap on A starts the jump on the next frame (vy=" + p.vy + ")", p.vy < -3);
+        float minY = p.y;
+        for (int i = 0; i < 60; i++) { step(1); minY = Math.min(minY, p.y); }
+        check("quick tap jump height = " + (int) (y0 - minY) + "px (>= 35)", y0 - minY >= 35);
+        // 2) taps between A, B, C all register
+        float[][] pts = {{W - 40, H - 48}, {W - 96, H - 34}, {W - 84, H - 98}, {W - 60, H - 20}, {W - 10, H - 70}};
+        String[] exp = {"A", "B", "C", "A", "A"};
+        for (int k = 0; k < pts.length; k++) {
+            tc.down(2, pts[k][0], pts[k][1]);
+            tc.poll();
+            String got = tc.a ? "A" : tc.b ? "B" : tc.c ? "C" : "-";
+            tc.up(2);
+            tc.poll();
+            check("touch at " + (int) pts[k][0] + "," + (int) pts[k][1] + " -> " + got, got.equals(exp[k]));
+        }
+        // 3) stick: touching the pad slightly right moves at once, frames to walk/run speed
+        startLevel(0);
+        p = g.level.player;
+        tc.down(3, tc.defBaseX() + 6, tc.defBaseY());
+        step(1);
+        check("light touch on the pad moves immediately (vx=" + p.vx + ")", p.vx > 0.5f);
+        int f = 1;
+        while (p.vx < p.hero.walk - 0.01f && f < 60) { step(1); f++; }
+        check("frames to reach walking speed: " + f, f <= 6);
+        tc.move(3, tc.defBaseX() + 40, tc.defBaseY());
+        int fr = 0;
+        while (p.vx < p.hero.run - 0.01f && fr < 90) { step(1); fr++; }
+        check("frames from walk to full run: " + fr, fr <= 14);
+        // 4) base follows the finger: a short move back reverses direction
+        tc.move(3, tc.defBaseX() + 80, tc.defBaseY());
+        step(1);
+        tc.move(3, tc.defBaseX() + 80 - 36, tc.defBaseY());
+        step(1);
+        check("reversing needs a short swipe (ax=" + tc.ax + ")", tc.ax < -0.2f);
+        int stop = 0;
+        while (p.vx > 0 && stop < 60) { step(1); stop++; }
+        check("frames to turn around from full run: " + stop, stop <= 9);
+        tc.up(3);
+        step(2);
+        // 4b) every new touch on the pad works (slot reuse regression)
+        int okTouches = 0;
+        for (int k = 0; k < 6; k++) {
+            startLevel(0);
+            p = g.level.player;
+            tc.down(10 + k, tc.defBaseX() + 15, tc.defBaseY());
+            step(2);
+            if (p.vx > 0.5f) okTouches++;
+            tc.up(10 + k);
+            step(1);
+        }
+        check("6 consecutive pad touches all move the hero: " + okTouches + "/6", okTouches == 6);
+        // 5) arrows mode
+        tc.mode = TouchControls.ARROWS;
+        startLevel(0);
+        p = g.level.player;
+        float[] R = tc.arrowR();
+        int rr = tc.down(4, R[0], R[1]);
+        step(1);
+        check("arrow press moves immediately (vx=" + p.vx + ")", p.vx > 0.5f);
+        step(TouchControls.ARROW_RUN_FRAMES + 12);
+        check("holding the arrow switches to running (vx=" + p.vx + ")", p.vx > p.hero.walk + 0.5f);
+        shot("c1_arrows");
+        float[] L = tc.arrowL();
+        tc.move(4, L[0], L[1]);
+        step(1);
+        check("sliding to the left arrow reverses at once (ax=" + tc.ax + ")", tc.ax < 0);
+        tc.up(4);
+        step(4);
+        // 6) options menu on the map toggles the control type
+        g.save.controls = TouchControls.STICK;
+        tc.mode = TouchControls.STICK;
+        java.lang.reflect.Field fs = Game.class.getDeclaredField("screen");
+        fs.setAccessible(true);
+        fs.setInt(g, Game.MAP);
+        keys(0, false, true, false);
+        step(2);
+        keys(0, false, false, false);
+        step(5);
+        check("B on the map opens the menu (screen=" + g.screen + ")", g.screen == Game.MENU);
+        shot("c2_menu");
+        tc.down(5, W / 2f, 62 + 19 + 3); // tap "COMANDI"
+        tc.up(5);
+        step(2);
+        check("tapping COMANDI switches to arrows (mode=" + tc.mode + ")", tc.mode == TouchControls.ARROWS && g.save.controls == TouchControls.ARROWS);
+        shot("c3_menu_arrows");
+        // 7) select screen: tapping the other card only selects it
+        fs.setInt(g, Game.SELECT);
+        g.save.hero = 0;
+        java.lang.reflect.Field fc = Game.class.getDeclaredField("selCursor");
+        fc.setAccessible(true);
+        fc.setInt(g, 0);
+        step(20);
+        tc.down(6, W / 2f + 60, 140);
+        tc.up(6);
+        step(3);
+        check("tap on Giuseppe's card selects without confirming (screen=" + g.screen + ", cursor=" + fc.getInt(g) + ")",
+                g.screen == Game.SELECT && fc.getInt(g) == 1);
     }
 
     static Input inp = new Input();

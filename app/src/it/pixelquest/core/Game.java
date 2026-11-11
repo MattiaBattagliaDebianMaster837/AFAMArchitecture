@@ -2,7 +2,7 @@ package it.pixelquest.core;
 
 /** Top-level game: screens, flow between them and persistence. Platform independent. */
 public final class Game {
-    public static final int TITLE = 0, SELECT = 1, MAP = 2, PLAY = 3, PAUSE = 4, GAMEOVER = 5, ENDING = 6;
+    public static final int TITLE = 0, SELECT = 1, MAP = 2, PLAY = 3, PAUSE = 4, GAMEOVER = 5, ENDING = 6, MENU = 7;
 
     public int W, H;
     public Gfx gfx;
@@ -34,6 +34,7 @@ public final class Game {
         save = new Save(storage);
         audio.musicOn = save.music;
         audio.sfxOn = save.sfx;
+        touch.mode = save.controls;
         Music.prewarm();
         resize(w, h);
         map = new WorldMap(this);
@@ -57,6 +58,13 @@ public final class Game {
         gfx = new Gfx(w, h);
         touch.W = w;
         touch.H = h;
+    }
+
+    /** Tutorial hints adapt to the chosen control scheme. */
+    public String hintText(String h) {
+        if (save.controls == TouchControls.ARROWS && h.startsWith("LEVETTA"))
+            return "FRECCE: CAMMINA. TIENILE PREMUTE PER CORRERE!";
+        return h;
     }
 
     public Hero hero() {
@@ -161,6 +169,7 @@ public final class Game {
     public void tick() {
         frame++;
         screenT++;
+        touch.enabled = screen == PLAY || screen == MAP;
         touch.poll();
         input.latch(touch);
         input.backP = backPresses.getAndSet(0) > 0;
@@ -186,6 +195,7 @@ public final class Game {
             case MAP: map.update(); break;
             case PLAY: updatePlay(); break;
             case PAUSE: updatePause(); break;
+            case MENU: updatePause(); break;
             case GAMEOVER:
                 if (screenT > 90 && (input.aP || !touch.taps.isEmpty() || input.backP)) go(MAP, 0);
                 break;
@@ -266,59 +276,108 @@ public final class Game {
         level.update(input);
     }
 
-    private String[] pauseItems() {
-        return new String[]{"CONTINUA", "MUSICA: " + (save.music ? "SI" : "NO"), "EFFETTI: " + (save.sfx ? "SI" : "NO"), "ESCI DAL LIVELLO"};
+    // menu item ids
+    private static final int I_CONTINUE = 0, I_CONTROLS = 1, I_VIBRATION = 2, I_MUSIC = 3, I_SFX = 4, I_EXIT_LEVEL = 5,
+            I_HERO = 6, I_TITLE = 7;
+
+    private int[] menuIds() {
+        if (screen == MENU) return new int[]{I_CONTINUE, I_CONTROLS, I_VIBRATION, I_MUSIC, I_SFX, I_HERO, I_TITLE};
+        return new int[]{I_CONTINUE, I_CONTROLS, I_VIBRATION, I_MUSIC, I_SFX, I_EXIT_LEVEL};
+    }
+
+    private String menuLabel(int id) {
+        switch (id) {
+            case I_CONTINUE: return "CONTINUA";
+            case I_CONTROLS: return "COMANDI: " + (save.controls == TouchControls.ARROWS ? "FRECCE" : "LEVETTA");
+            case I_VIBRATION: return "VIBRAZIONE: " + (save.vibration ? "SI" : "NO");
+            case I_MUSIC: return "MUSICA: " + (save.music ? "SI" : "NO");
+            case I_SFX: return "EFFETTI: " + (save.sfx ? "SI" : "NO");
+            case I_EXIT_LEVEL: return "ESCI DAL LIVELLO";
+            case I_HERO: return "CAMBIA PERSONAGGIO";
+            default: return "SCHERMATA DEL TITOLO";
+        }
+    }
+
+    /** Opens the map menu (options). */
+    void openMapMenu() {
+        screen = MENU;
+        pauseCursor = 0;
+        input.consume();
+        Sfx.play(Sfx.PAUSE);
+    }
+
+    private void closeMenu() {
+        screen = screen == MENU ? MAP : PLAY;
+        input.consume();
+        Sfx.play(Sfx.PAUSE);
     }
 
     private void updatePause() {
-        String[] items = pauseItems();
+        int[] ids = menuIds();
         if (input.upP) {
-            pauseCursor = (pauseCursor + items.length - 1) % items.length;
+            pauseCursor = (pauseCursor + ids.length - 1) % ids.length;
             Sfx.play(Sfx.SELECT);
         }
         if (input.downP) {
-            pauseCursor = (pauseCursor + 1) % items.length;
+            pauseCursor = (pauseCursor + 1) % ids.length;
             Sfx.play(Sfx.SELECT);
         }
         int chosen = -1;
-        if (input.aP) chosen = pauseCursor;
-        if (input.pauseP || input.backP || input.bP) chosen = 0;
+        if (input.aP) chosen = ids[pauseCursor];
+        if (input.pauseP || input.backP || input.bP) chosen = I_CONTINUE;
         for (float[] tp : touch.taps) {
-            for (int i = 0; i < items.length; i++) {
+            for (int i = 0; i < ids.length; i++) {
                 int y = pauseItemY(i);
-                if (tp[1] >= y - 6 && tp[1] < y + 14 && Math.abs(tp[0] - W / 2f) < 90) {
+                if (tp[1] >= y - 5 && tp[1] < y + 13 && Math.abs(tp[0] - W / 2f) < 100) {
                     pauseCursor = i;
-                    chosen = i;
+                    chosen = ids[i];
                 }
             }
         }
         if (chosen < 0) return;
         switch (chosen) {
-            case 0:
-                screen = PLAY;
-                input.consume();
-                Sfx.play(Sfx.PAUSE);
+            case I_CONTINUE:
+                closeMenu();
                 break;
-            case 1:
+            case I_CONTROLS:
+                save.controls = save.controls == TouchControls.ARROWS ? TouchControls.STICK : TouchControls.ARROWS;
+                touch.mode = save.controls;
+                touch.cancelAll();
+                save.store();
+                Sfx.play(Sfx.SELECT);
+                break;
+            case I_VIBRATION:
+                save.vibration = !save.vibration;
+                save.store();
+                Sfx.play(Sfx.SELECT);
+                break;
+            case I_MUSIC:
                 save.music = !save.music;
                 audio.musicOn = save.music;
                 save.store();
                 break;
-            case 2:
+            case I_SFX:
                 save.sfx = !save.sfx;
                 audio.sfxOn = save.sfx;
                 save.store();
                 Sfx.play(Sfx.SELECT);
                 break;
-            case 3:
+            case I_EXIT_LEVEL:
                 checkpointLevel = -1;
                 go(MAP, 0);
+                break;
+            case I_HERO:
+                Sfx.play(Sfx.CONFIRM);
+                go(SELECT, 0);
+                break;
+            case I_TITLE:
+                go(TITLE, 0);
                 break;
         }
     }
 
     private int pauseItemY(int i) {
-        return 84 + i * 24;
+        return 62 + i * 19;
     }
 
     // ------------------------------------------------------------------ render
@@ -330,6 +389,7 @@ public final class Game {
             case MAP: map.render(g); break;
             case PLAY: renderPlay(g, true); break;
             case PAUSE: renderPause(g); break;
+            case MENU: renderPause(g); break;
             case GAMEOVER: renderGameOver(g); break;
             case ENDING: renderEnding(g); break;
         }
@@ -346,20 +406,26 @@ public final class Game {
     }
 
     private void renderPause(Gfx g) {
-        renderPlay(g, false);
-        g.dim(0xFF000010, 150);
-        g.textC("PAUSA", W / 2, 40, 0xFFFFE070, 0xFF000000, 3);
-        String[] items = pauseItems();
-        for (int i = 0; i < items.length; i++) {
+        boolean mapMenu = screen == MENU;
+        if (mapMenu) map.render(g);
+        else renderPlay(g, false);
+        g.dim(0xFF000010, 160);
+        g.textC(mapMenu ? "MENU" : "PAUSA", W / 2, 24, 0xFFFFE070, 0xFF000000, 3);
+        int[] ids = menuIds();
+        for (int i = 0; i < ids.length; i++) {
             int y = pauseItemY(i);
             boolean sel = i == pauseCursor;
             if (sel) {
-                g.fillA(W / 2 - 86, y - 5, 172, 17, 0xFFFFFFFF, 40);
-                g.text("\u0004", W / 2 - 80, y, 0xFFFFE070);
+                g.fillA(W / 2 - 96, y - 5, 192, 17, 0xFFFFFFFF, 40);
+                g.text("\u0004", W / 2 - 90, y, 0xFFFFE070);
             }
-            g.textC(items[i], W / 2, y, sel ? 0xFFFFE070 : 0xFFFFFFFF, 0xFF000000, 1);
+            g.textC(menuLabel(ids[i]), W / 2, y, sel ? 0xFFFFE070 : 0xFFFFFFFF, 0xFF000000, 1);
         }
-        g.textC(level.def.code + " " + level.def.name, W / 2, H - 20, 0xFFAAB4D0, 0xFF000000, 1);
+        String foot;
+        if (ids[pauseCursor] == I_CONTROLS)
+            foot = save.controls == TouchControls.ARROWS ? "FRECCE: TIENI PREMUTO PER CORRERE" : "LEVETTA: SPINGI AL BORDO PER CORRERE";
+        else foot = mapMenu ? "B: CHIUDI" : level.def.code + " " + level.def.name;
+        g.textC(foot, W / 2, H - 16, 0xFFAAB4D0, 0xFF000000, 1);
     }
 
     private void renderTitle(Gfx g) {
@@ -391,7 +457,7 @@ public final class Game {
         // slime chasing for fun
         g.blit(Art.slime[0][(frame / 12) % 2].scaled(2), W / 2 + 70, gy - 22);
         if ((frame / 30) % 2 == 0) g.textC("TOCCA PER INIZIARE", W / 2, H - 14, 0xFFFFFFFF, 0xFF000000, 1);
-        g.text("V1.0", W - 28, H - 10, 0xFFFFFFFF, 1, 160);
+        g.text("V1.1", W - 28, H - 10, 0xFFFFFFFF, 1, 160);
     }
 
     private void renderSelect(Gfx g) {

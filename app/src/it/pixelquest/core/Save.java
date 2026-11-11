@@ -15,6 +15,9 @@ public final class Save {
     public final int[] gems = new int[LEVELS];
     public int lives = 5, totalCoins, hero, lastNode;
     public boolean music = true, sfx = true, seenIntro;
+    /** TouchControls.STICK or TouchControls.ARROWS */
+    public int controls = TouchControls.STICK;
+    public boolean vibration = true;
 
     public Save(Storage st) {
         this.st = st;
@@ -52,6 +55,8 @@ public final class Save {
             sfx = p[8].equals("1");
             lastNode = Integer.parseInt(p[9]);
             seenIntro = p.length > 10 && p[10].equals("1");
+            if (p.length > 11) controls = Integer.parseInt(p[11]) == TouchControls.ARROWS ? TouchControls.ARROWS : TouchControls.STICK;
+            if (p.length > 12) vibration = p[12].equals("1");
         } catch (Exception e) {
             // corrupted save: start fresh
         }
@@ -65,6 +70,7 @@ public final class Save {
             g.append(gems[i]);
         }
         st.put("save", "v1;" + unlocked + ";" + cleared + ";" + g + ";" + lives + ";" + totalCoins + ";" + hero + ";"
-                + (music ? 1 : 0) + ";" + (sfx ? 1 : 0) + ";" + lastNode + ";" + (seenIntro ? 1 : 0));
+                + (music ? 1 : 0) + ";" + (sfx ? 1 : 0) + ";" + lastNode + ";" + (seenIntro ? 1 : 0) + ";" + controls
+                + ";" + (vibration ? 1 : 0));
     }
 }

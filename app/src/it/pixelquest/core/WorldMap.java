@@ -43,7 +43,7 @@ public final class WorldMap {
         TouchControls tc = game.touch;
         if (moveFrom < 0) {
             if (in.backP || in.bP) {
-                game.openTitle();
+                game.openMapMenu();
                 return;
             }
             if (in.rightP && cur < game.save.unlocked && cur < 15) target = cur + 1;

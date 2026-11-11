@@ -21,14 +21,25 @@ fatte con `./build.sh` usano la stessa chiave, quindi si installano sopra la ver
 ## Comandi (touch)
 | Comando | Azione |
 |---|---|
-| **Levetta** (metà sinistra dello schermo) | Cammina. **Spingila fino al bordo per correre** |
+| **Levetta** (metà sinistra dello schermo) | Cammina. **Spingila verso il bordo per correre** |
+| oppure **Frecce ◀ ▶** (si sceglie nel menu) | Tieni premuto per camminare; dopo un attimo il personaggio corre da solo |
 | **A** | Salta (tieni premuto per saltare più in alto) |
 | **B** | Salto **spin** (distrugge anche i ricci spinosi e i proiettili) |
 | **C** | Abilità del personaggio |
-| ⏸ in alto a destra | Pausa (musica/effetti on/off, esci dal livello) |
+| ⏸ in alto a destra | Pausa |
+
+Reattività dei comandi:
+- **Tasti A/B/C:** tutta la parte destra dello schermo è divisa tra i tre tasti (vince il più vicino), quindi un tocco
+  verso il bordo o nell'angolo viene comunque preso. Anche un tocco brevissimo viene registrato e fa un salto vero.
+- **Levetta:** se tocchi il pad il personaggio parte subito. Se tocchi altrove a sinistra il pad si sposta sotto il dito.
+  Il pad segue il dito, quindi per invertire la direzione basta un piccolo movimento.
+- **Vibrazione:** una breve vibrazione conferma ogni pressione (si può disattivare).
+
+**Opzioni** (tasto B "MENU" sulla mappa, oppure ⏸ durante il livello): COMANDI levetta/frecce, VIBRAZIONE,
+MUSICA, EFFETTI, cambio personaggio.
 
 Combinazioni comuni a tutti i personaggi:
-- **Corsa automatica**: levetta all'estremo.
+- **Corsa automatica**: levetta all'estremo (o freccia tenuta premuta).
 - **Wall jump**: in aria, appoggiandoti a un muro ti attacchi automaticamente e scivoli; premi **A** per rimbalzare.
 - **Triplo salto con capriola**: correndo, salta 3 volte di fila appena atterri; il terzo salto è una capriola altissima.
 - **Rimbalzo sui nemici**: salta sulla testa dei nemici (tieni A/B per rimbalzare più in alto).
@@ -42,7 +53,7 @@ Combinazioni comuni a tutti i personaggi:
 | Salto | ★★★☆☆ | ★★★★★ |
 | Abilità (C) | **Pugno**: stende i nemici, rompe i mattoni, respinge i proiettili | **Pistola**: spara a distanza, **2 colpi ogni 10 secondi**, danno doppio ai boss |
 
-Il personaggio si sceglie all'avvio e si può cambiare in qualsiasi momento dalla mappa (tasto C, "EROE").
+Il personaggio si sceglie all'avvio e si può cambiare in qualsiasi momento dalla mappa (tasto C "EROE" o dal menu).
 
 ## Mondi e livelli
 Ogni mondo ha 3 livelli e un castello finale con un boss. Ogni livello normale nasconde **3 gemme** (48 in totale).
@@ -91,6 +102,7 @@ javac -d /tmp/pq app/src/it/pixelquest/core/*.java desktop/src/it/pixelquest/cor
 java -cp /tmp/pq it.pixelquest.desktop.Sim /tmp/shots screens
 java -cp /tmp/pq it.pixelquest.desktop.Sim /tmp/shots bot      # verifica che ogni livello sia completabile
 java -cp /tmp/pq it.pixelquest.desktop.Sim /tmp/shots fuzz 4000
+java -cp /tmp/pq it.pixelquest.desktop.Sim /tmp/shots controls  # test di reattività dei comandi touch
 ```
 Il bot esplora ogni livello con la vera fisica del gioco (corse, salti, wall jump, tripli salti, piattaforme)
 e conferma che tutti i 16 livelli sono completabili con entrambi i personaggi.

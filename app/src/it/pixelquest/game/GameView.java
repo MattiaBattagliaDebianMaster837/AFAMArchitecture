@@ -10,6 +10,9 @@ import android.graphics.Rect;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
+import android.os.Build;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -17,6 +20,7 @@ import android.view.SurfaceView;
 import it.pixelquest.core.Audio;
 import it.pixelquest.core.Game;
 import it.pixelquest.core.Save;
+import it.pixelquest.core.TouchControls;
 
 /**
  * Hosts the platform-independent {@link Game}: runs a fixed 60 Hz update loop on its own thread,
@@ -34,6 +38,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
     private volatile float scale = 1, offX, offY;
     private int surfW, surfH;
     private AudioTrack track;
+    private final Vibrator vibrator;
 
     public GameView(Context ctx) {
         super(ctx);
@@ -41,6 +46,13 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
         getHolder().addCallback(this);
         setFocusable(true);
         setFocusableInTouchMode(true);
+        Vibrator v = null;
+        try {
+            v = (Vibrator) ctx.getSystemService(Context.VIBRATOR_SERVICE);
+            if (v != null && !v.hasVibrator()) v = null;
+        } catch (Throwable ignored) {
+        }
+        vibrator = v;
         paint.setFilterBitmap(false);
         paint.setAntiAlias(false);
         paint.setDither(false);
@@ -245,6 +257,17 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
         track = null;
     }
 
+    /** Very short tick of vibration so presses are felt immediately. */
+    @SuppressWarnings("deprecation")
+    private void buzz() {
+        if (vibrator == null) return;
+        try {
+            if (Build.VERSION.SDK_INT >= 26) vibrator.vibrate(VibrationEffect.createOneShot(12, 90));
+            else vibrator.vibrate(12);
+        } catch (Throwable ignored) {
+        }
+    }
+
     // ------------------------------------------------------------- touch
     @Override
     public boolean onTouchEvent(MotionEvent e) {
@@ -255,9 +278,13 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
         float s = scale;
         switch (action) {
             case MotionEvent.ACTION_DOWN:
-            case MotionEvent.ACTION_POINTER_DOWN:
-                g.touch.down(e.getPointerId(idx), (e.getX(idx) - offX) / s, (e.getY(idx) - offY) / s);
+            case MotionEvent.ACTION_POINTER_DOWN: {
+                int hit = g.touch.down(e.getPointerId(idx), (e.getX(idx) - offX) / s, (e.getY(idx) - offY) / s);
+                boolean button = hit == TouchControls.BTN_A || hit == TouchControls.BTN_B || hit == TouchControls.BTN_C
+                        || hit == TouchControls.BTN_PAUSE || (hit == TouchControls.MOVE && g.touch.mode == TouchControls.ARROWS);
+                if (button && g.save.vibration) buzz();
                 break;
+            }
             case MotionEvent.ACTION_MOVE:
                 for (int i = 0; i < e.getPointerCount(); i++)
                     g.touch.move(e.getPointerId(i), (e.getX(i) - offX) / s, (e.getY(i) - offY) / s);

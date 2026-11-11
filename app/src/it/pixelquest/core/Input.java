@@ -29,11 +29,11 @@ public final class Input {
     }
 
     public int dir() {
-        return ax < -0.25f ? -1 : ax > 0.25f ? 1 : 0;
+        return ax < -0.2f ? -1 : ax > 0.2f ? 1 : 0;
     }
 
     public boolean runHeld() {
-        return Math.abs(ax) > 0.8f;
+        return Math.abs(ax) >= TouchControls.RUN_AT;
     }
 
     /** Merge sources and compute edge-triggered flags. */

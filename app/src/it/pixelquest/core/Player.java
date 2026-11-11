@@ -15,7 +15,7 @@ public final class Player extends Entity {
     int deathT;
 
     // movement state
-    int coyote, jumpBuf, spinBuf, chain, chainWindow, wallLock, wallStick, pushAway;
+    int coyote, jumpBuf, spinBuf, chain, chainWindow, wallLock, wallStick, pushAway, jumpHoldMin;
     public boolean spinning, flipping, skidding, running, wallSliding, autoWalk;
     public int wallDir;
     float flipAngle;
@@ -97,20 +97,25 @@ public final class Player extends Entity {
         float max = runHeld ? hero.run : hero.walk;
         running = runHeld && dir != 0;
         skidding = false;
-        float acc = onGround ? (runHeld ? 0.12f : 0.09f) : 0.1f;
-        float dec = onGround ? 0.14f : 0.02f;
+        // snappy acceleration: walking speed is reached almost at once, running builds up quickly
+        float acc;
+        if (onGround) acc = Math.abs(vx) < hero.walk ? 0.24f : 0.17f;
+        else acc = 0.17f;
+        float dec = onGround ? 0.28f : 0.05f;
         if (onIce) {
             acc *= 0.35f;
-            dec = 0.02f;
+            dec = 0.03f;
         }
         if (punchT > 8 && onGround) dir = 0;
         if (dir != 0) {
             if (onGround && vx * dir < 0 && Math.abs(vx) > 0.6f) {
-                vx += dir * (onIce ? 0.08f : 0.3f);
+                vx += dir * (onIce ? 0.1f : 0.45f);
                 skidding = true;
                 if (t % 4 == 0) L.spawn(new Ents.Dust(cx() - dir * 4, bottom()));
                 if (t % 10 == 0) Sfx.play(Sfx.SKID);
             } else if (vx * dir < max) {
+                // instant start from standstill (no sluggish first frames)
+                if (onGround && !onIce && vx * dir < 0.8f) vx = dir * Math.min(0.8f, max);
                 vx += dir * acc;
                 if (vx * dir > max) vx = max * dir;
             } else if (vx * dir > max) {
@@ -141,6 +146,11 @@ public final class Player extends Entity {
         // -------------------------------------------------------------- gravity
         boolean hold = spinning ? (in.b || in.a) : in.a;
         if (autoWalk) hold = false;
+        // even a very quick tap gives a proper jump: low gravity for the first frames
+        if (jumpHoldMin > 0) {
+            jumpHoldMin--;
+            hold = true;
+        }
         float g = (vy < 0 && hold) ? GRAV_HOLD : GRAV;
         vy = Math.min(vy + g, MAX_FALL);
         if (wallSliding && vy > 1.3f) vy = 1.3f;
@@ -273,6 +283,7 @@ public final class Player extends Entity {
         flipping = chain == 2;
         flipAngle = 0;
         riding = null;
+        jumpHoldMin = 7;
         Sfx.play(spin ? Sfx.SPIN : chain == 2 ? Sfx.JUMP3 : chain == 1 ? Sfx.JUMP2 : Sfx.JUMP);
         if (chain == 2) L.spawn(new Ents.Dust(cx(), bottom()));
     }
@@ -280,6 +291,7 @@ public final class Player extends Entity {
     private void wallJump(boolean spin) {
         vy = -(hero.jump + 0.15f);
         vx = -wallDir * 2.7f;
+        jumpHoldMin = 7;
         facing = -wallDir;
         wallLock = 11;
         wallStick = 0;
@@ -304,6 +316,7 @@ public final class Player extends Entity {
     /** Bounce after stomping something. */
     public void bounce(boolean big) {
         vy = big ? -6.4f : -4.6f;
+        jumpHoldMin = 0;
         onGround = false;
         coyote = 0;
         if (flipping) flipping = false;
@@ -393,6 +406,7 @@ public final class Player extends Entity {
         }
         invuln = 100;
         hurtT = 20;
+        jumpHoldMin = 0;
         vy = spikes ? -5f : -3.2f;
         vx = (cx() < fromX ? -1.6f : 1.6f);
         spinning = flipping = false;
