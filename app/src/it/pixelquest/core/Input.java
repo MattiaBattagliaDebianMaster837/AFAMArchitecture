@@ -3,13 +3,13 @@ package it.pixelquest.core;
 /** Logical controller state for one frame (merged from touch controls and keyboard/gamepad). */
 public final class Input {
     public float ax, ay;
-    public boolean a, b, c, pause;
-    private boolean pa, pb, pc, ppause, pl, pr, pu, pd;
-    public boolean aP, bP, cP, pauseP, leftP, rightP, upP, downP;
+    public boolean a, b, c, s, pause;
+    private boolean pa, pb, pc, ps, ppause, pl, pr, pu, pd;
+    public boolean aP, bP, cP, sP, pauseP, leftP, rightP, upP, downP;
 
     // keyboard / gamepad state written by the platform layer (any thread)
     public volatile float keyAx, keyAy;
-    public volatile boolean keyA, keyB, keyC, keyPause;
+    public volatile boolean keyA, keyB, keyC, keyS, keyPause;
     public boolean backP;
 
     public boolean left() {
@@ -44,10 +44,12 @@ public final class Input {
         a = keyA || (tc != null && tc.a);
         b = keyB || (tc != null && tc.b);
         c = keyC || (tc != null && tc.c);
+        s = keyS || (tc != null && tc.s);
         pause = keyPause || (tc != null && tc.pause);
         aP = a && !pa;
         bP = b && !pb;
         cP = c && !pc;
+        sP = s && !ps;
         pauseP = pause && !ppause;
         leftP = left() && !pl;
         rightP = right() && !pr;
@@ -56,6 +58,7 @@ public final class Input {
         pa = a;
         pb = b;
         pc = c;
+        ps = s;
         ppause = pause;
         pl = left();
         pr = right();
@@ -65,6 +68,6 @@ public final class Input {
 
     /** Swallow currently held buttons so they don't trigger again on the next screen. */
     public void consume() {
-        aP = bP = cP = pauseP = leftP = rightP = upP = downP = backP = false;
+        aP = bP = cP = sP = pauseP = leftP = rightP = upP = downP = backP = false;
     }
 }

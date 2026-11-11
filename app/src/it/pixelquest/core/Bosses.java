@@ -78,10 +78,23 @@ public final class Bosses {
             return !defeated && inv < 45;
         }
 
+        int freezeT;
+
+        public void freeze(int frames) {
+            if (!defeated) freezeT = Math.max(freezeT, frames);
+        }
+
         public void hit(int dmg, float fromX) {
-            if (inv > 0 || defeated || !awake) return;
+            hit(dmg, fromX, false);
+        }
+
+        /** Damage the boss. Special moves pass force=true and ignore the post-hit invulnerability. */
+        public boolean hit(int dmg, float fromX, boolean force) {
+            if ((inv > 0 && !force) || defeated || !awake) return false;
             hp -= dmg;
             inv = 70;
+            if (L.player != null) L.player.addEnergy(8);
+            L.spawn(new Ents.FloatText(cx(), y - 6, "-" + dmg, 0xFFFF8A6A));
             L.shake = 8;
             Sfx.play(Sfx.BOSSHIT);
             if (hp <= 0) {
@@ -90,6 +103,7 @@ public final class Bosses {
                 enemy = false;
                 deathT = 0;
             } else onHurt();
+            return true;
         }
 
         void onHurt() {
@@ -120,6 +134,13 @@ public final class Bosses {
                 physics(0.4f, 6);
                 return;
             }
+            if (freezeT > 0) { // slowed down by ice: skips most of its turns
+                freezeT--;
+                if (t % 3 != 0) {
+                    if (gravity) physics(0.4f, 6);
+                    return;
+                }
+            }
             think();
         }
 
@@ -141,6 +162,7 @@ public final class Bosses {
             int flash = (inv > 0 && (inv / 3) % 2 == 0) || (defeated && (deathT / 3) % 2 == 0) ? 0xFFFFFFFF : 0;
             int sx = defeated ? (deathT % 4) - 2 : 0;
             g.blit(s, Math.round(cx() - s.w / 2f) - cx + sx, Math.round(bottom()) - s.h - cy + 2, facing > 0, 255, 0);
+            if (freezeT > 0) g.blit(s, Math.round(cx() - s.w / 2f) - cx + sx, Math.round(bottom()) - s.h - cy + 2, facing > 0, 120, 0xFF9AE4FF);
             if (flash != 0) g.blit(s, Math.round(cx() - s.w / 2f) - cx + sx, Math.round(bottom()) - s.h - cy + 2, facing > 0, 150, flash);
         }
     }
@@ -194,7 +216,7 @@ public final class Bosses {
 
     static final class Boar extends Boss {
         Boar(float x, float y) {
-            super(x, y, 40, 28, 6, "RE CINGHIALONE");
+            super(x, y, 40, 28, 10, "RE CINGHIALONE");
             if (boarSprites == null)
                 boarSprites = new Sprite[]{boar(0, false, false), boar(1, false, false), boar(0, true, false), boar(1, true, false), boar(0, false, true)};
         }
@@ -326,7 +348,7 @@ public final class Bosses {
         float baseY, ang;
 
         Scarab(float x, float y) {
-            super(x, y, 36, 28, 7, "FARAONE SCARABEO");
+            super(x, y, 36, 28, 12, "FARAONE SCARABEO");
             if (scarabSprites == null) scarabSprites = new Sprite[]{scarab(0, false), scarab(1, false), scarab(0, true)};
             gravity = true;
         }
@@ -463,7 +485,7 @@ public final class Bosses {
         int throwsLeft;
 
         Yeti(float x, float y) {
-            super(x, y, 36, 44, 7, "YETI GLACIALE");
+            super(x, y, 36, 44, 13, "YETI GLACIALE");
             if (yetiSprites == null) yetiSprites = new Sprite[]{yeti(0), yeti(1), yeti(2)};
         }
 
@@ -575,7 +597,7 @@ public final class Bosses {
         int spot, fade = 255;
 
         Magmus(float x, float y) {
-            super(x, y, 26, 46, 9, "LORD MAGMUS");
+            super(x, y, 26, 46, 16, "LORD MAGMUS");
             if (magSprites == null) magSprites = new Sprite[]{magmus(false), magmus(true)};
             gravity = false;
             solidTiles = false;

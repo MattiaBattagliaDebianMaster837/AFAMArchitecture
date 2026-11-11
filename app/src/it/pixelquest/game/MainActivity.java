@@ -106,6 +106,9 @@ public class MainActivity extends Activity {
             case KeyEvent.KEYCODE_BUTTON_X: case KeyEvent.KEYCODE_BUTTON_Y: case KeyEvent.KEYCODE_C: case KeyEvent.KEYCODE_L:
                 in.keyC = down;
                 return true;
+            case KeyEvent.KEYCODE_BUTTON_R1: case KeyEvent.KEYCODE_BUTTON_L1: case KeyEvent.KEYCODE_V:
+                in.keyS = down;
+                return true;
             case KeyEvent.KEYCODE_BUTTON_START: case KeyEvent.KEYCODE_ENTER: case KeyEvent.KEYCODE_P:
                 in.keyPause = down;
                 return true;

@@ -18,6 +18,18 @@ public final class Save {
     /** TouchControls.STICK or TouchControls.ARROWS */
     public int controls = TouchControls.STICK;
     public boolean vibration = true;
+    /** upgrade level (0..2) for each hero */
+    public final int[] upgrades = new int[8];
+    /** best grade per level: 0 none, 1 D, 2 C, 3 B, 4 A, 5 S */
+    public final int[] grades = new int[LEVELS];
+    /** coins collected towards the next extra life (coins themselves are kept as currency) */
+    public int coinLife;
+
+    public static final String[] GRADE_NAMES = {"-", "D", "C", "B", "A", "S"};
+
+    public int upgrade(int hero) {
+        return hero >= 0 && hero < upgrades.length ? upgrades[hero] : 0;
+    }
 
     public Save(Storage st) {
         this.st = st;
@@ -57,9 +69,28 @@ public final class Save {
             seenIntro = p.length > 10 && p[10].equals("1");
             if (p.length > 11) controls = Integer.parseInt(p[11]) == TouchControls.ARROWS ? TouchControls.ARROWS : TouchControls.STICK;
             if (p.length > 12) vibration = p[12].equals("1");
+            if (p.length > 13) {
+                String[] u = p[13].split(",");
+                for (int i = 0; i < upgrades.length && i < u.length; i++) upgrades[i] = Math.max(0, Math.min(2, Integer.parseInt(u[i])));
+            }
+            if (p.length > 14) {
+                String[] gr = p[14].split(",");
+                for (int i = 0; i < LEVELS && i < gr.length; i++) grades[i] = Math.max(0, Math.min(5, Integer.parseInt(gr[i])));
+            }
+            if (p.length > 15) coinLife = Integer.parseInt(p[15]);
+            if (hero >= 5 || hero < 0) hero = 0;
         } catch (Exception e) {
             // corrupted save: start fresh
         }
+    }
+
+    private static String join(int[] a) {
+        StringBuilder b = new StringBuilder();
+        for (int i = 0; i < a.length; i++) {
+            if (i > 0) b.append(',');
+            b.append(a[i]);
+        }
+        return b.toString();
     }
 
     public void store() {
@@ -71,6 +102,6 @@ public final class Save {
         }
         st.put("save", "v1;" + unlocked + ";" + cleared + ";" + g + ";" + lives + ";" + totalCoins + ";" + hero + ";"
                 + (music ? 1 : 0) + ";" + (sfx ? 1 : 0) + ";" + lastNode + ";" + (seenIntro ? 1 : 0) + ";" + controls
-                + ";" + (vibration ? 1 : 0));
+                + ";" + (vibration ? 1 : 0) + ";" + join(upgrades) + ";" + join(grades) + ";" + coinLife);
     }
 }

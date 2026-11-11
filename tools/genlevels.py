@@ -15,7 +15,7 @@ import re
 SRC = sys.argv[1] if len(sys.argv) > 1 else "levels/levels.txt"
 OUT = sys.argv[2] if len(sys.argv) > 2 else "app/src/it/pixelquest/core/Levels.java"
 
-VALID = set(" .#=Bb?MhLI*-^~%okPCGgsrvfpxXTmwnFKieu")
+VALID = set(" .#=Bb?MhLI*-^~%okPCGgsrvfpxXTmwnFKieuYZzql")
 
 
 def parse(path):
@@ -89,10 +89,10 @@ def check(lv, rows):
     # walkers must have something under them (within 4 tiles)
     for r, row in enumerate(rows):
         for c, ch in enumerate(row):
-            if ch in "srfpTCGiP":
+            if ch in "srfpTCGiPzql":
                 ok = False
                 for rr in range(r + 1, min(len(rows), r + 5)):
-                    if rows[rr][c] in "#=BbMhL?*I-^k":
+                    if rows[rr][c] in "#=BbMhL?*I-^kYZ":
                         ok = True
                         break
                 if not ok:

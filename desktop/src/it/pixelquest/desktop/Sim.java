@@ -58,6 +58,9 @@ public class Sim {
         else if (sc.equals("fuzz")) fuzz(Integer.parseInt(args[2]));
         else if (sc.equals("jumps")) jumps();
         else if (sc.equals("controls")) controls();
+        else if (sc.equals("abilities")) abilities();
+        else if (sc.equals("batpose")) batpose();
+        else if (sc.equals("look")) look(Integer.parseInt(args[2]), Integer.parseInt(args[3]));
         System.out.println("done");
     }
 
@@ -215,10 +218,10 @@ public class Sim {
         step(2);
         keys(0, false, false, true);
         step(2);
-        System.out.println("ammo after 3 presses=" + l.player.ammo + " reload=" + l.player.reloadT);
+        System.out.println("ammo after 3 presses=" + l.player.charges + " reload=" + l.player.rechargeT);
         keys(0, false, false, false);
         step(600);
-        System.out.println("ammo after 10s=" + l.player.ammo);
+        System.out.println("ammo after 10s=" + l.player.charges);
         shot("m5_after_reload");
     }
 
@@ -285,8 +288,9 @@ public class Sim {
         java.util.Random r = new java.util.Random(1234);
         long total = 0;
         for (int lv = 0; lv < Levels.count(); lv++) {
-            for (int hero = 0; hero < 2; hero++) {
+            for (int hero = 0; hero < 5; hero++) {
                 g = new Game(r.nextBoolean() ? 498 : 400, 224, mem());
+                g.save.upgrades[hero] = r.nextInt(3);
                 g.save.hero = hero;
                 g.save.unlocked = 15;
                 g.save.lastNode = lv;
@@ -302,6 +306,9 @@ public class Sim {
                     if (r.nextInt(30) == 0) b = r.nextBoolean();
                     if (r.nextInt(25) == 0) c = r.nextBoolean();
                     keys(ax, a, b, c);
+                    g.input.keyS = r.nextInt(40) == 0;
+                    if (g.level != null && r.nextInt(500) == 0) g.level.player.energy = Player.ENERGY_MAX;
+                    if (g.level != null && r.nextInt(700) == 0) g.level.player.power = r.nextInt(3);
                     g.input.keyAy = r.nextInt(50) == 0 ? (r.nextBoolean() ? 1 : -1) : 0;
                     g.input.keyPause = r.nextInt(2000) == 0;
                     if (r.nextInt(3000) == 0) g.onBack();
@@ -483,6 +490,118 @@ public class Sim {
         step(3);
         check("tap on Giuseppe's card selects without confirming (screen=" + g.screen + ", cursor=" + fc.getInt(g) + ")",
                 g.screen == Game.SELECT && fc.getInt(g) == 1);
+    }
+
+    static int countEnemies(Level l) {
+        int n = 0;
+        for (Entity e : l.ents) if (e instanceof Ents.Enemy && !e.dead && ((Ents.Enemy) e).hp > 0 && e.enemy) n++;
+        return n;
+    }
+
+    /** Each hero: ability on C (normal / fire / ice) and special move on S. */
+    static void abilities() throws Exception {
+        String[] nm = {"mattia", "giuseppe", "francesco", "andrea", "paolo"};
+        for (int h = 0; h < 5; h++) {
+            for (int pw = 0; pw < 3; pw++) {
+                g.save.hero = h;
+                startLevel(0);
+                Level l = g.level;
+                Player p = l.player;
+                p.power = pw;
+                l.ents.clear();
+                // a row of slimes in front of the hero
+                for (int k = 0; k < 4; k++) {
+                    Ents.Slime sl = new Ents.Slime(p.x + 40 + k * 26, p.y + 10, 0);
+                    sl.L = l;
+                    sl.alwaysActive = true;
+                    l.ents.add(sl);
+                }
+                int before = countEnemies(l);
+                keys(0.1f, false, false, true);
+                step(1);
+                keys(0, false, false, false);
+                int frozen = 0;
+                for (int i = 0; i < 70; i++) {
+                    step(1);
+                    if (i == 10 && pw == 0) shot("ab_" + nm[h]);
+                    if (i == 20 && pw > 0) shot("ab_" + nm[h] + (pw == 1 ? "_fire" : "_ice"));
+                }
+                for (Entity e : l.ents) if (e instanceof Ents.Enemy && ((Ents.Enemy) e).frozen > 0) frozen++;
+                int after = countEnemies(l);
+                System.out.println(String.format("%-10s power=%d  C: enemies %d -> %d (frozen %d)  energy=%.0f", nm[h], pw, before, after, frozen, p.energy));
+            }
+            // special
+            g.save.hero = h;
+            startLevel(0);
+            Level l = g.level;
+            Player p = l.player;
+            l.ents.clear();
+            for (int k = 0; k < 6; k++) {
+                Ents.Slime sl = new Ents.Slime(p.x + 30 + k * 30, p.y + 10, 0);
+                sl.L = l;
+                sl.alwaysActive = true;
+                l.ents.add(sl);
+            }
+            p.energy = Player.ENERGY_MAX;
+            g.input.keyS = true;
+            step(2);
+            g.input.keyS = false;
+            for (int i = 0; i < 200; i++) {
+                step(1);
+                if (i == 12 || i == 60) shot("sp_" + nm[h] + "_" + i);
+            }
+            System.out.println(String.format("%-10s SPECIAL: enemies left %d of 6, energy now %.0f", nm[h], countEnemies(l), p.energy));
+        }
+        // shop + select screenshots
+        java.lang.reflect.Field fs = Game.class.getDeclaredField("screen");
+        fs.setAccessible(true);
+        g.save.totalCoins = 500;
+        g.save.hero = 3;
+        fs.setInt(g, Game.SELECT);
+        step(30);
+        shot("ui_select");
+        java.lang.reflect.Method go = Game.class.getDeclaredMethod("go", int.class, int.class);
+        go.setAccessible(true);
+        go.invoke(g, Game.SHOP, 0);
+        step(30);
+        keys(0, true, false, false);
+        step(2);
+        keys(0, false, false, false);
+        step(5);
+        shot("ui_shop");
+        System.out.println("shop: upgrades[3]=" + g.save.upgrades[3] + " coins=" + g.save.totalCoins);
+    }
+
+    static void batpose() throws Exception {
+        g.save.hero = 3;
+        startLevel(0);
+        Level l = g.level;
+        l.player.x = 200;
+        l.ents.clear();
+        step(10);
+        Gfx out = new Gfx(60 * 6, 50);
+        for (int k = 0; k < 6; k++) {
+            if (k == 1) { keys(0, false, false, true); step(1); keys(0, false, false, false); }
+            else step(k == 0 ? 1 : 3);
+            g.render();
+            int px = (int) (l.player.cx() - l.camX), py = (int) (l.player.bottom() - l.camY);
+            for (int y = 0; y < 50; y++) for (int x = 0; x < 60; x++) {
+                int sx = px - 30 + x, sy = py - 40 + y;
+                if (sx >= 0 && sy >= 0 && sx < g.W && sy < g.H) out.px[y * out.w + k * 60 + x] = g.gfx.px[sy * g.W + sx];
+            }
+        }
+        Png.save(out, 4, "/tmp/claude-0/-home-user-AFAMArchitecture/1732c71e-d741-57bd-bfab-6cb30889deae/scratchpad/shots/batpose.png");
+    }
+
+    /** Screenshot of a level at a given column (enemies included). */
+    static void look(int idx, int col) throws Exception {
+        g.save.hero = 4;
+        startLevel(idx);
+        Level l = g.level;
+        l.player.x = col * 16;
+        l.player.invuln = 100000;
+        step(90);
+        shot("look_" + idx + "_" + col);
     }
 
     static Input inp = new Input();

@@ -9,7 +9,7 @@ public final class Level {
     public static final byte EMPTY = 0, GROUND = 1, STONE = 2, BRICK = 3, QBLOCK = 4, USED = 5, SEMI = 6, SPIKE = 7,
             LAVA = 8, LAVA_BODY = 9, COIN = 10, ICE = 11, CANNON = 12, GATE = 13;
     // q-block contents
-    public static final byte C_COIN = 1, C_MULTI = 2, C_HEART = 3, C_STAR = 4, C_LIFE = 5;
+    public static final byte C_COIN = 1, C_MULTI = 2, C_HEART = 3, C_STAR = 4, C_LIFE = 5, C_FIRE = 6, C_ICE = 7;
 
     public final Game game;
     public final LevelDef def;
@@ -79,6 +79,11 @@ public final class Level {
                     case 'h': tiles[i] = QBLOCK; data[i] = C_HEART; break;
                     case '*': tiles[i] = QBLOCK; data[i] = C_STAR; break;
                     case 'L': tiles[i] = QBLOCK; data[i] = C_LIFE; break;
+                    case 'Y': tiles[i] = QBLOCK; data[i] = C_FIRE; break;
+                    case 'Z': tiles[i] = QBLOCK; data[i] = C_ICE; break;
+                    case 'z': add(new Ents.Golem(ex + 1, ey)); break;
+                    case 'q': add(new Ents.Cactus(ex, ey)); break;
+                    case 'l': add(new Ents.Lizard(ex, ey)); break;
                     case '-': tiles[i] = SEMI; break;
                     case '^': tiles[i] = SPIKE; break;
                     case '~': tiles[i] = LAVA; break;
@@ -327,6 +332,12 @@ public final class Level {
                     tiles[i] = USED;
                     Sfx.play(Sfx.SPROUT);
                     break;
+                case C_FIRE:
+                case C_ICE:
+                    spawn(new Ents.Item(bx, by, content == C_FIRE ? Ents.Item.FIRE : Ents.Item.ICE));
+                    tiles[i] = USED;
+                    Sfx.play(Sfx.SPROUT);
+                    break;
                 case C_LIFE:
                     spawn(new Ents.Item(bx, by, Ents.Item.LIFE));
                     tiles[i] = USED;
@@ -369,14 +380,22 @@ public final class Level {
 
     public void addCoin(int n) {
         coins += n;
-        game.save.totalCoins += n;
+        game.save.totalCoins += n; // coins are kept: they buy upgrades in the shop
+        game.save.coinLife += n;
         Sfx.play(Sfx.COIN);
-        if (game.save.totalCoins >= 100) {
-            game.save.totalCoins -= 100;
+        if (player != null) player.addEnergy(n);
+        if (game.save.coinLife >= 100) {
+            game.save.coinLife -= 100;
             game.save.lives++;
             Sfx.play(Sfx.LIFE);
-            spawn(new Ents.FloatText(player.cx(), player.y - 10, "+1 VITA", 0xFF7CFF7C));
+            if (player != null) spawn(new Ents.FloatText(player.cx(), player.y - 10, "+1 VITA", 0xFF7CFF7C));
         }
+    }
+
+    /** An enemy was defeated by the player: energy for the special move. */
+    public void onKill(Ents.Enemy e) {
+        if (player != null) player.addEnergy(e.energy);
+        game.attemptKills++;
     }
 
     // ------------------------------------------------------------------ update
@@ -421,9 +440,11 @@ public final class Level {
 
         updateCamera();
         stateT++;
+        if (state == PLAY) game.attemptFrames++;
+        boolean skip = stateT > 130 && (in.aP || in.cP || !game.touch.taps.isEmpty());
         if (state == DEAD && stateT > 110) game.onPlayerDied();
-        if (state == CLEAR && stateT > 200) game.onLevelClear(this);
-        if (state == BOSSWIN && stateT > 240) game.onLevelClear(this);
+        if (state == CLEAR && (stateT > 420 || skip)) game.onLevelClear(this);
+        if (state == BOSSWIN && (stateT > 460 || skip)) game.onLevelClear(this);
     }
 
     private boolean active(Entity e) {
@@ -487,8 +508,37 @@ public final class Level {
         Sfx.play(Sfx.DIE);
     }
 
+    // ----------------------------------------------------------------- grades
+    public int grade, gradeScore;
+    public boolean newRecord;
+
+    /** Target time in seconds for an S rank. */
+    public int parSeconds() {
+        if (def.boss) return 95;
+        if (th > 22) return 30 + th;
+        return 12 + tw / 4;
+    }
+
+    private void computeGrade() {
+        int secs = game.attemptFrames / 60;
+        int par = parSeconds();
+        int score = 100;
+        if (secs > par) score -= Math.min(45, (secs - par) * 45 / Math.max(1, par));
+        score -= game.attemptHits * 12;
+        score -= game.attemptDeaths * 20;
+        score += Integer.bitCount(gems) * 3;
+        gradeScore = score;
+        if (secs <= par && game.attemptHits == 0 && game.attemptDeaths == 0) grade = 5;
+        else if (score >= 82) grade = 4;
+        else if (score >= 64) grade = 3;
+        else if (score >= 45) grade = 2;
+        else grade = 1;
+        newRecord = grade > game.save.grades[def.index];
+    }
+
     public void clear() {
         if (state != PLAY) return;
+        computeGrade();
         state = CLEAR;
         stateT = 0;
         game.audio.music(Music.CLEAR);
@@ -507,6 +557,7 @@ public final class Level {
 
     public void trophyTaken() {
         if (state != PLAY) return;
+        computeGrade();
         state = BOSSWIN;
         stateT = 0;
         game.audio.music(Music.CLEAR);
@@ -517,6 +568,7 @@ public final class Level {
     public void gemTaken(int idx) {
         gems |= 1 << idx;
         Sfx.play(Sfx.GEM);
+        if (player != null) player.addEnergy(20);
     }
 
     public void checkpointTaken(Ents.Checkpoint c) {
@@ -584,33 +636,81 @@ public final class Level {
         g.oy = 0;
     }
 
+    private void renderResults(Gfx g) {
+        int k = Math.min(255, (stateT - 70) * 12);
+        int pw = 220, ph = 112, px = g.w / 2 - pw / 2, py = 84;
+        g.fillA(px, py, pw, ph, 0xFF0A0A1A, Math.min(220, k));
+        g.rect(px, py, pw, ph, 0xFFFFE070);
+        int secs = game.attemptFrames / 60, par = parSeconds();
+        String tm = (secs / 60) + ":" + (secs % 60 < 10 ? "0" : "") + (secs % 60);
+        String pt = (par / 60) + ":" + (par % 60 < 10 ? "0" : "") + (par % 60);
+        int ty = py + 10;
+        if (stateT > 85) g.textO("TEMPO   " + tm + "  (S: " + pt + ")", px + 10, ty, secs <= par ? 0xFF7CFF7C : 0xFFFFFFFF, 0xFF000000, 1);
+        if (stateT > 100) g.textO("DANNI   " + game.attemptHits, px + 10, ty + 14, game.attemptHits == 0 ? 0xFF7CFF7C : 0xFFFFFFFF, 0xFF000000, 1);
+        if (stateT > 115) g.textO("CADUTE  " + game.attemptDeaths, px + 10, ty + 28, game.attemptDeaths == 0 ? 0xFF7CFF7C : 0xFFFFFFFF, 0xFF000000, 1);
+        if (stateT > 130) g.textO("NEMICI  " + game.attemptKills + "    MONETE " + coins, px + 10, ty + 42, 0xFFFFFFFF, 0xFF000000, 1);
+        if (stateT > 145) g.textO("GEMME   " + Integer.bitCount(gems) + "/" + gemCount, px + 10, ty + 56, 0xFF8AD0FF, 0xFF000000, 1);
+        if (stateT > 170) {
+            int[] cols = {0xFFFFFFFF, 0xFFB0B0C0, 0xFF8AD0FF, 0xFF7CFF7C, 0xFFFFB040, 0xFFFFE040};
+            String gl = Save.GRADE_NAMES[grade];
+            int sc = stateT < 185 ? 7 - (stateT - 170) / 5 : 4;
+            g.textO("GRADO", px + pw - 52, py + 12, 0xFFFFFFFF, 0xFF000000, 1);
+            g.textC(gl, px + pw - 37, py + 30, cols[grade], 0xFF000000, Math.max(4, sc));
+            if (newRecord && (frame / 10) % 2 == 0) g.textC("NUOVO RECORD!", px + pw / 2, py + ph - 14, 0xFFFFE070, 0xFF000000, 1);
+        }
+        if (stateT > 130 && (frame / 20) % 2 == 0) g.textC("A: CONTINUA", g.w / 2, py + ph + 6, 0xFFC0C0D8, 0xFF000000, 1);
+    }
+
     public void renderHud(Gfx g) {
         Player p = player;
-        // hearts
+        // hearts + flower power
         for (int i = 0; i < Player.MAX_HP; i++) g.blit(i < p.hp ? Art.hudHeart : Art.hudHeartEmpty, 4 + i * 12, 4);
-        // lives with hero face
-        Sprite face = game.hero().icon;
+        if (p.power != Combat.NONE) g.blit(p.power == Combat.FIRE ? Art.fireFlower : Art.iceFlower, 41, 2);
+        // lives with hero face, coins
+        Sprite face = p.hero.icon;
         g.blit(face, 4, 17);
         g.textO("x" + game.save.lives, 21, 22, 0xFFFFFFFF, 0xFF000000, 1);
-        // coins
         g.blit(Art.hudCoin, 44, 18);
         g.textO("" + game.save.totalCoins, 57, 22, 0xFFFFE070, 0xFF000000, 1);
+        // energy bar for the special move
+        {
+            int ex = 4, ey = 34, ew = 62;
+            boolean full = p.energy >= Player.ENERGY_MAX;
+            g.blit(Art.hudEnergy, ex, ey - 1);
+            g.fill(ex + 9, ey, ew + 2, 7, 0xFF000000);
+            g.fill(ex + 10, ey + 1, ew, 5, 0xFF2A2440);
+            int fw = (int) (ew * p.energy / Player.ENERGY_MAX);
+            int col = full ? ((frame / 6) % 2 == 0 ? 0xFFFFE070 : 0xFFFFFFFF) : 0xFFE0A030;
+            g.fill(ex + 10, ey + 1, fw, 5, col);
+            g.fill(ex + 10, ey + 1, fw, 1, 0xFFFFF4C0);
+            if (full) g.textO("S!", ex + ew + 14, ey - 1, 0xFFFFE070, 0xFF000000, 1);
+        }
+        // ability charges / reload
+        {
+            int bx = 4, by = 45;
+            if (p.maxCharges > 0) {
+                Sprite on = p.hero.ability_ == Hero.GUN ? Art.hudBullet : p.hero.ability_ == Hero.COIN ? Art.coinShot : Art.soccer;
+                Sprite off = on.silhouette(0xFF4A4A5A);
+                for (int i = 0; i < p.maxCharges; i++) g.blit(i < p.charges ? on : off, bx + i * 11, by);
+                bx += p.maxCharges * 11 + 2;
+            }
+            float rf = p.reloadFrac();
+            if (rf > 0) {
+                g.fill(bx, by + 2, 32, 6, 0xFF000000);
+                g.fill(bx + 1, by + 3, 30, 4, 0xFF303048);
+                g.fill(bx + 1, by + 3, (int) (30 * (1 - rf)), 4, 0xFFFFD040);
+            }
+        }
         // gems
         for (int i = 0; i < gemCount; i++) {
             boolean got = (gems & (1 << i)) != 0 || (game.save.gems(def.index) & (1 << i)) != 0;
             g.blit(got ? Art.hudGem : Art.hudGemEmpty, g.w / 2 - 22 + i * 15, 4);
         }
-        // ammo for gun hero
-        if (p.hero.gun()) {
-            int bx = 4, by = 33;
-            for (int i = 0; i < 2; i++) g.blit(i < p.ammo ? Art.hudBullet : Art.hudBulletEmpty, bx + i * 9, by);
-            if (p.reloadT > 0) {
-                float f = 1f - p.reloadT / (float) Player.RELOAD;
-                g.fill(bx + 19, by + 1, 32, 6, 0xFF000000);
-                g.fill(bx + 20, by + 2, 30, 4, 0xFF303048);
-                g.fill(bx + 20, by + 2, (int) (30 * f), 4, 0xFFFFD040);
-
-            }
+        // timer (top right, under the pause button)
+        if (state == PLAY) {
+            int secs = game.attemptFrames / 60;
+            String tm = (secs / 60) + ":" + (secs % 60 < 10 ? "0" : "") + (secs % 60);
+            g.textO(tm, g.w - 34 - Gfx.textW(tm, 1), 10, secs <= parSeconds() ? 0xFFFFFFFF : 0xFFFF9A7A, 0xFF000000, 1);
         }
         // boss bar
         if (bossEnt != null && arenaLocked && !bossEnt.dead && bossEnt.hp > 0) {
@@ -621,6 +721,7 @@ public final class Level {
             g.fill(bx, by, bw * bossEnt.hp / bossEnt.maxHp, 1, 0xFFFF9A8A);
             g.textC(bossEnt.name, g.w / 2, by + 8, 0xFFFFFFFF, 0xFF000000, 1);
         }
+        if ((state == CLEAR || state == BOSSWIN) && stateT > 70) renderResults(g);
         if (hintT > 0 && hint != null && state == PLAY) {
             int a = Math.min(220, hintT * 20);
             int tw2 = Gfx.textW(hint, 1) + 12;

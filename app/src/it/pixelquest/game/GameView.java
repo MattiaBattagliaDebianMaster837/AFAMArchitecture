@@ -280,7 +280,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
             case MotionEvent.ACTION_DOWN:
             case MotionEvent.ACTION_POINTER_DOWN: {
                 int hit = g.touch.down(e.getPointerId(idx), (e.getX(idx) - offX) / s, (e.getY(idx) - offY) / s);
-                boolean button = hit == TouchControls.BTN_A || hit == TouchControls.BTN_B || hit == TouchControls.BTN_C
+                boolean button = hit == TouchControls.BTN_A || hit == TouchControls.BTN_B || hit == TouchControls.BTN_C || hit == TouchControls.BTN_S
                         || hit == TouchControls.BTN_PAUSE || (hit == TouchControls.MOVE && g.touch.mode == TouchControls.ARROWS);
                 if (button && g.save.vibration) buzz();
                 break;

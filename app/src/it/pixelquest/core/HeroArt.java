@@ -166,6 +166,188 @@ public final class HeroArt {
         return l;
     }
 
+    static Look tee(int skin, int skinSh, int shirt, int shirtSh, int shirtLt, int pants, int pantsSh, int shoe, int sole, int style) {
+        Look l = new Look();
+        l.skin = skin;
+        l.skinSh = skinSh;
+        l.jacket = shirt;
+        l.jacketSh = shirtSh;
+        l.jacketLt = shirtLt;
+        l.yoke = shirt;
+        l.yokeSh = shirtSh;
+        l.trim = shirtLt;
+        l.pants = pants;
+        l.pantsSh = pantsSh;
+        l.shoe = shoe;
+        l.sole = sole;
+        l.outline = 0xFF1A0F10;
+        l.style = style;
+        return l;
+    }
+
+    // -------------------------------------------------------------- Francesco
+    public static Look francesco() {
+        Look l = tee(0xFFE4B48E, 0xFFC48E6A, 0xFFEEE6D6, 0xFFCDC3AE, 0xFFFFFFFF, 0xFF34405E, 0xFF252E46, 0xFFF2F0EA, 0xFF9A9AA6, 2);
+        HashMap<Character, Integer> p = pal(
+                'H', 0xFF1C1210, 'h', 0xFF3E2C22, 'S', l.skin, 's', l.skinSh, 'E', 0xFF2A160E, 'W', 0xFFFFFFFF,
+                'B', 0xFF160E0A, 'd', 0xFFB08A6E, 'm', 0xFF5A1A1E, 'r', 0xFFB8C0CC, 'T', 0xFFF4F0EA, 't', 0xFFE8909A,
+                'e', 0xFFD29C7A);
+        l.headSide = Sprite.parse(new String[]{
+                "..hHH.HHh.Hh..",
+                ".HHHhHHHHHHHH.",
+                "HHhHHHHHhHHHHH",
+                "HHHHHHhHHHHHHH",
+                "HhHHHHHHHHHhHH",
+                "HHHHHHHHHHHHHH",
+                "HHHHHSHHHSSHHS",
+                "HHHHSBBSSSBBSS",
+                "HHHeSWESSSWESS",
+                ".HHeSWESSSWESs",
+                ".HHdSSSSSSSssS",
+                "..ddmTrTrTmSS.",
+                "...dmmttmmdd..",
+        }, p);
+        l.headFront = Sprite.parse(new String[]{
+                "..hHH.hHHh.H..",
+                ".HHHHhHHHHHHH.",
+                "hHHHHHHHhHHHHH",
+                "HHhHHHHHHHHhHH",
+                "HHHHHhHHHHHHHH",
+                "HHHHHHHHHHHHHH",
+                "HHHSHHSSHHSHHH",
+                "HHSBBSSSSBBSHH",
+                "HeSWESSSSSWESe",
+                "HeSWESSsSSWESe",
+                ".dSSSSSSSSSSd.",
+                "..dmTrTrTrTmd.",
+                "...dmmttmmd...",
+        }, p);
+        l.headBack = Sprite.parse(new String[]{
+                "..hHH.hHHh.H..",
+                ".HHHHhHHHHHHH.",
+                "hHHHHHHHhHHHHH",
+                "HHhHHHHHHHHhHH",
+                "HHHHHhHHHHHHHH",
+                "HHHHHHHHHHhHHH",
+                "HHhHHHHHHHHHHH",
+                "HHHHHHHhHHHHHH",
+                "HeHHhHHHHHHHeH",
+                "HeHHHHHHHhHHeH",
+                ".HHHHHHHHHHHH.",
+                "..HHHHHHHHHH..",
+                "...sSSSSSSs...",
+        }, p);
+        return l;
+    }
+
+    // ----------------------------------------------------------------- Andrea
+    public static Look andrea() {
+        Look l = tee(0xFFE8B898, 0xFFC8967A, 0xFF2C2C34, 0xFF18181E, 0xFF4A4A54, 0xFF6A6A78, 0xFF4E4E5A, 0xFF22222A, 0xFFE8E8E8, 3);
+        HashMap<Character, Integer> p = pal(
+                'H', 0xFF3A2218, 'h', 0xFF5C3A28, 'S', l.skin, 's', l.skinSh, 'E', 0xFF2A170E, 'W', 0xFFF6EEE8,
+                'B', 0xFF2A1810, 'm', 0xFFB07060, 'e', 0xFFD8A688);
+        l.headSide = Sprite.parse(new String[]{
+                "...hHHHHh.....",
+                "..HHHHHHHHH...",
+                ".HHHHHHHHHHH..",
+                "HHHHHHHHHHHHH.",
+                "HHHHHHHHHHHHHH",
+                "HHHHhHHHHHHHHH",
+                "HHHHHHHHHHHHSS",
+                "HHHeSBBBSSBBBS",
+                "HHHeSWESSSSWES",
+                ".HHsSSSSSSSSsS",
+                ".HHSSSSSSSSSSS",
+                "..sSSSSSmmmSS.",
+                "...sSSSSSSSS..",
+        }, p);
+        l.headFront = Sprite.parse(new String[]{
+                "...hHHHHHh....",
+                ".hHHHHHHHHHHh.",
+                "HHHHHHHHHHHHHH",
+                "HHHHHHHHHHHHHH",
+                "HHHHhHHHHHHHHH",
+                "HHHHHHHHHHHSHH",
+                "HHHHHHHHSSSSSH",
+                "HeSBBBSSSBBBSe",
+                "HeSSWESSSWESSe",
+                ".eSSSSSsSSSSe.",
+                ".SSSSSSSSSSSS.",
+                "..SSSSmmmSSS..",
+                "...sSSSSSSs...",
+        }, p);
+        l.headBack = Sprite.parse(new String[]{
+                "...hHHHHHh....",
+                ".hHHHHHHHHHHh.",
+                "HHHHHHHHHHHHHH",
+                "HHHHHHhHHHHHHH",
+                "HHHHHHHHHHHHHH",
+                "HHHHHHHHHHHHHH",
+                "HHHHhHHHHHHHHH",
+                "HHHHHHHHHHHHHH",
+                "HeHHHHHHHHHHeH",
+                "HeHHHHHHHHHHeH",
+                ".HHHHHHHHHHHH.",
+                "..sHHHHHHHHs..",
+                "...sSSSSSSs...",
+        }, p);
+        return l;
+    }
+
+    // ------------------------------------------------------------------ Paolo
+    public static Look paolo() {
+        Look l = tee(0xFFE6B694, 0xFFC4906E, 0xFFC9C9CF, 0xFFA2A2AA, 0xFFE4E4EA, 0xFF3E5A8E, 0xFF2C4268, 0xFFF2F0EA, 0xFF8A8A96, 4);
+        HashMap<Character, Integer> p = pal(
+                'H', 0xFF4A2E1E, 'h', 0xFF7A5638, 'S', l.skin, 's', l.skinSh, 'E', 0xFF2A170E, 'W', 0xFFFFFFFF,
+                'B', 0xFF2A1A10, 'D', 0xFF2E1C12, 'd', 0xFF4E3424, 'T', 0xFFF6F2EA, 'e', 0xFFD4A282);
+        l.headSide = Sprite.parse(new String[]{
+                "...hHHHh......",
+                "..HHHHHHHH....",
+                ".HHHHhHHHHH...",
+                "HHHHHHHHHHHH..",
+                "HHHHHHHHHHHHH.",
+                "HHHHHHHhHHHHHH",
+                "HHHHSSHHHHHHSS",
+                "HHHeSBBSSSBBSS",
+                "HHHeSWESSSWESS",
+                ".HHdSSSSSSSSsS",
+                ".HDDDSSSSSDDDS",
+                "..DDDTTTTTTDD.",
+                "...DDDDDDDDD..",
+        }, p);
+        l.headFront = Sprite.parse(new String[]{
+                "...hHHHHh.....",
+                "..HHHHHHHHHh..",
+                ".HHHHHHHHHHHH.",
+                "HHHHHHHHHHHHHH",
+                "HHHHHHhHHHHHHH",
+                "HHHHHHHHHHHHHH",
+                "HHSSSHHHHHSSSH",
+                "HeSBBBSSSBBBSe",
+                "HeSSWESSSWESSe",
+                ".dSSSSSsSSSSd.",
+                ".DDDDSSSSDDDD.",
+                ".DDDTTTTTTDDD.",
+                "..DDDDDDDDDD..",
+        }, p);
+        l.headBack = Sprite.parse(new String[]{
+                "...hHHHHh.....",
+                "..HHHHHHHHHh..",
+                ".HHHHHHHHHHHH.",
+                "HHHHHHHHHHHHHH",
+                "HHHHHhHHHHHHHH",
+                "HHHHHHHHHHHHHH",
+                "HHHHHHHHHhHHHH",
+                "HHHHHHHHHHHHHH",
+                "HeHHHHHHHHHHeH",
+                "HeHHHHHHHHHHeH",
+                ".DHHHHHHHHHHD.",
+                "..DHHHHHHHHD..",
+                "...DSSSSSSD...",
+        }, p);
+        return l;
+    }
+
     // ------------------------------------------------------------- composition
     private static final int CW = 18, CH = 26;
 
@@ -211,6 +393,14 @@ public final class HeroArt {
         float ex = sx + dx * len, ey = sy + dy * len;
         float mx = sx + dx * (len - 2), my = sy + dy * (len - 2);
         int sleeve = l.style == 0 ? (back ? l.yokeSh : l.yoke) : (back ? l.jacketSh : l.jacket);
+        if (l.style >= 2) { // t-shirt: short sleeve, bare forearm
+            float qx = sx + dx * 2, qy = sy + dy * 2;
+            thick(s, sx, sy, ex, ey, 2, back ? l.skinSh : l.skin);
+            thick(s, sx, sy, qx, qy, 2, sleeve);
+            int hs = fist ? 3 : 2;
+            block(s, Math.round(ex) - hs / 2, Math.round(ey) - hs / 2, hs, hs, back ? l.skinSh : l.skin);
+            return;
+        }
         thick(s, sx, sy, mx, my, 2, sleeve);
         int cuff = l.style == 0 ? (back ? l.jacketSh : l.jacket) : (back ? Gfx.shade(l.jacketSh, 0.9f) : l.jacketSh);
         block(s, Math.round(mx) - 1, Math.round(my) - 1, 2, 2, cuff);
@@ -222,6 +412,18 @@ public final class HeroArt {
         int y0 = 12 + bob;
         block(s, 5, y0, 8, 7 - bob, l.jacket);
         block(s, 5, y0, 1, 7 - bob, l.jacketSh);
+        if (l.style >= 2) { // t-shirt with round neckline
+            block(s, 9, y0, 3, 1, l.skin);
+            plot(s, 10, y0 + 1, l.skinSh);
+            block(s, 5, 18, 8, 1, l.jacketSh);
+            plot(s, 7, y0 + 3, l.jacketLt);
+            if (l.style == 3) { // Andrea: small grey print
+                plot(s, 10, y0 + 3, 0xFF8A8A96);
+                plot(s, 11, y0 + 3, 0xFF8A8A96);
+                plot(s, 10, y0 + 4, 0xFF8A8A96);
+            }
+            return;
+        }
         if (l.style == 0) {
             block(s, 5, y0, 8, 3, l.yoke);
             block(s, 5, y0, 1, 3, l.yokeSh);
@@ -250,6 +452,15 @@ public final class HeroArt {
         block(s, 5, y0, 8, 7 - bob, l.jacket);
         block(s, 5, y0, 1, 7 - bob, l.jacketSh);
         block(s, 12, y0, 1, 7 - bob, l.jacketSh);
+        if (l.style >= 2) {
+            if (!back) {
+                block(s, 7, y0, 4, 1, l.skin);
+                block(s, 8, y0 + 1, 2, 1, l.skinSh);
+                if (l.style == 3) block(s, 8, y0 + 3, 2, 2, 0xFF8A8A96);
+            }
+            block(s, 5, 18, 8, 1, l.jacketSh);
+            return;
+        }
         if (l.style == 0) {
             block(s, 5, y0, 8, 3, l.yoke);
             if (!back) {
@@ -283,6 +494,12 @@ public final class HeroArt {
         boolean fist = extra == 1;
         int len = extra == 1 ? 8 : 6;
         arm(s, l, 10, 13 + bob, fa, len, false, fist);
+        if (extra == 3) { // gold coin in the hand
+            double a = Math.toRadians(fa);
+            int hx = Math.round(10 + (float) Math.sin(a) * 6), hy = Math.round(13 + bob + (float) Math.cos(a) * 6);
+            block(s, hx - 1, hy - 3, 3, 3, 0xFFFFC830);
+            plot(s, hx - 1, hy - 3, 0xFFFFF0A0);
+        }
         if (extra == 2) { // pistol held forward
             double a = Math.toRadians(fa);
             int hx = Math.round(10 + (float) Math.sin(a) * 6), hy = Math.round(13 + bob + (float) Math.cos(a) * 6);
@@ -332,12 +549,27 @@ public final class HeroArt {
         f[FALL] = side(l, 0, 0, 1, 1, -2, 0, 115, -100, 0);
         f[SKID] = side(l, 0, -1, 4, 0, 1, 0, -40, -70, 0);
         f[WALL] = side(l, 0, 0, 2, 3, -1, 0, 95, 60, 0);
-        if (l.style == 0) {
-            f[ACT0] = side(l, 0, 0, 2, 0, -3, 0, -70, 30, 1);
-            f[ACT1] = side(l, 0, 1, 4, 0, -4, 0, 90, -40, 1);
-        } else {
-            f[ACT0] = side(l, 0, 0, 2, 0, -2, 0, 90, 40, 2);
-            f[ACT1] = side(l, 0, -1, 2, 0, -2, 0, 100, 40, 2);
+        switch (l.style) {
+            case 0: // punch
+                f[ACT0] = side(l, 0, 0, 2, 0, -3, 0, -70, 30, 1);
+                f[ACT1] = side(l, 0, 1, 4, 0, -4, 0, 90, -40, 1);
+                break;
+            case 1: // pistol
+                f[ACT0] = side(l, 0, 0, 2, 0, -2, 0, 90, 40, 2);
+                f[ACT1] = side(l, 0, -1, 2, 0, -2, 0, 100, 40, 2);
+                break;
+            case 2: // coin throw: wind up behind the head, then release forward
+                f[ACT0] = side(l, 0, -1, 2, 0, -3, 0, -150, 40, 3);
+                f[ACT1] = side(l, 0, 1, 4, 0, -3, 0, 110, -40, 0);
+                break;
+            case 3: // bat: both hands up behind, then swung forward (bat drawn by the player)
+                f[ACT0] = side(l, 0, -1, 2, 0, -3, 0, -140, -120, 0);
+                f[ACT1] = side(l, 0, 1, 4, 0, -4, 0, 80, 70, 0);
+                break;
+            default: // kick: leg back, then high kick forward
+                f[ACT0] = side(l, 0, 0, -4, 3, 1, 0, 50, -50, 0);
+                f[ACT1] = side(l, 0, -1, 7, 6, -1, 0, -60, 80, 0);
+                break;
         }
         f[HURT] = side(l, 0, -1, 2, 2, -2, 1, 160, -160, 0);
         f[FRONT] = front(l, false, 15, 15, 0, false);

@@ -150,7 +150,7 @@ public final class Ents {
 
     // ===================================================================== items
     public static final class Item extends Entity {
-        public static final int HEART = 0, STAR = 1, LIFE = 2;
+        public static final int HEART = 0, STAR = 1, LIFE = 2, FIRE = 3, ICE = 4;
         final int kind;
         int rise = 16;
 
@@ -172,6 +172,7 @@ public final class Ents {
                 return;
             }
             float sp = kind == STAR ? 1.3f : kind == LIFE ? 1.1f : 0.7f;
+            if (kind == FIRE || kind == ICE) sp = 0; // flowers stay put
             vx = facing * sp;
             physics(0.3f, 5);
             if (hitL || hitR) facing = -facing;
@@ -188,6 +189,10 @@ public final class Ents {
                 } else if (kind == STAR) {
                     p.star();
                     Sfx.play(Sfx.POWER);
+                } else if (kind == FIRE || kind == ICE) {
+                    p.setPower(kind == FIRE ? Combat.FIRE : Combat.ICE);
+                    Sfx.play(Sfx.POWER);
+                    L.spawn(new FloatText(cx(), y, kind == FIRE ? "FIORE DI FUOCO!" : "FIORE DI GHIACCIO!", kind == FIRE ? 0xFFFFA060 : 0xFFA0E8FF));
                 } else {
                     L.game.save.lives++;
                     Sfx.play(Sfx.LIFE);
@@ -199,7 +204,8 @@ public final class Ents {
 
         @Override
         public void render(Gfx g, int cx, int cy) {
-            Sprite s = kind == HEART ? Art.heart : kind == STAR ? Art.star[(t / 4) % 2] : Art.potion;
+            Sprite s = kind == HEART ? Art.heart : kind == STAR ? Art.star[(t / 4) % 2] : kind == FIRE ? Art.fireFlower
+                    : kind == ICE ? Art.iceFlower : Art.potion;
             drawSprite(g, s, cx, cy, false);
         }
     }
@@ -511,15 +517,15 @@ public final class Ents {
 
     /** Enemy projectile. */
     public static final class Shot extends Entity {
-        public static final int BALL = 0, SAND = 1, SNOW = 2, ICICLE = 3, FIRE = 4, ROCK = 5;
+        public static final int BALL = 0, SAND = 1, SNOW = 2, ICICLE = 3, FIRE = 4, ROCK = 5, SPINE = 6;
         final int kind;
         int bounces;
 
         public Shot(float cx, float cy, float vx, float vy, int kind) {
             this.kind = kind;
             Sprite s = sprite();
-            w = s.w - 4;
-            h = s.h - 4;
+            w = Math.max(3, s.w - 4);
+            h = Math.max(3, s.h - 4);
             x = cx - w / 2f;
             y = cy - h / 2f;
             this.vx = vx;
@@ -540,13 +546,14 @@ public final class Ents {
                 case ICICLE: return Art.icicle;
                 case FIRE: return Art.fireball[0];
                 case ROCK: return Art.rock;
+                case SPINE: return Art.spine;
                 default: return Art.cannonBall;
             }
         }
 
         @Override
         public void update() {
-            if (kind == SAND || kind == SNOW || kind == ICICLE || kind == ROCK) vy = Math.min(vy + (kind == ICICLE || kind == ROCK ? 0.3f : 0.18f), 6);
+            if (kind == SAND || kind == SNOW || kind == ICICLE || kind == ROCK || kind == SPINE) vy = Math.min(vy + (kind == ICICLE || kind == ROCK ? 0.3f : kind == SPINE ? 0.2f : 0.18f), 6);
             x += vx;
             y += vy;
             if (L.solidAt(cx(), cy() + h / 2f) || L.solidAt(cx() + Math.signum(vx) * w / 2f, cy())) {
@@ -579,6 +586,13 @@ public final class Ents {
     // ===================================================================== enemies
     public abstract static class Enemy extends Entity {
         int ko, koT;
+        /** hit points (most enemies die in one hit) */
+        public int hp = 1;
+        /** frames left frozen by an ice attack */
+        public int frozen;
+        int hurtFlash;
+        /** energy given to the player when defeated */
+        int energy = 12;
 
         Enemy() {
             enemy = true;
@@ -588,10 +602,17 @@ public final class Ents {
             return false;
         }
 
+        /** Speed multiplier: later worlds are faster. */
+        float speedK() {
+            return 1f + L.def.world * 0.12f;
+        }
+
         @Override
         public void kill(int how) {
-            if (ko != 0) return;
+            if (ko != 0 || dead) return;
             enemy = false;
+            frozen = 0;
+            L.onKill(this);
             if (how == STOMP && canSquash()) {
                 ko = 1;
                 vx = 0;
@@ -604,6 +625,52 @@ public final class Ents {
                 solidTiles = false;
                 if (how != STOMP) Sfx.play(Sfx.KICK);
             }
+        }
+
+        /** Damage from a hero attack. Ice freezes, a frozen enemy shatters on any hit. */
+        public boolean damage(int dmg, int how, int element) {
+            if (ko != 0 || dead) return false;
+            if (frozen > 0) {
+                shatter();
+                return true;
+            }
+            if (element == Combat.ICE) {
+                frozen = 300;
+                vx = 0;
+                Sfx.play(Sfx.BUMP);
+                for (int k = 0; k < 3; k++) L.spawn(new Combat.Ember(x + k * 4, y + 2, 0xFFDFF8FF));
+                return true;
+            }
+            if (element == Combat.FIRE) dmg += 1;
+            hp -= dmg;
+            if (hp <= 0) kill(how);
+            else {
+                hurtFlash = 12;
+                Sfx.play(Sfx.HIT);
+                vx = L.player.cx() < cx() ? 1.5f : -1.5f;
+            }
+            return true;
+        }
+
+        public void shatter() {
+            if (ko != 0 || dead) return;
+            frozen = 0;
+            for (int k = 0; k < 6; k++) L.spawn(new Combat.Shard(cx(), cy(), (k - 2.5f) * 0.8f, -2.5f - (k % 3)));
+            Sfx.play(Sfx.BREAK);
+            enemy = false;
+            L.onKill(this);
+            dead = true;
+        }
+
+        /** Regular stomp. Tough enemies only lose one hit point. */
+        public void stomped() {
+            if (hp > 1) damage(1, STOMP, Combat.NONE);
+            else kill(STOMP);
+        }
+
+        public void spun() {
+            if (hp > 2) damage(2, SPIN, Combat.NONE);
+            else kill(SPIN);
         }
 
         @Override
@@ -620,6 +687,14 @@ public final class Ents {
                 x += vx;
                 y += vy;
                 if (y > L.camY + L.game.H + 40) dead = true;
+                return;
+            }
+            if (hurtFlash > 0) hurtFlash--;
+            if (frozen > 0) {
+                frozen--;
+                vx = 0;
+                if (gravity && solidTiles) physics(0.4f, 6);
+                if (frozen == 0) Sfx.play(Sfx.BUMP);
                 return;
             }
             act();
@@ -642,11 +717,21 @@ public final class Ents {
                 g.blitEx(s, cx() - cx, cy() - cy, 1, -1, 0, flip, 255, 0);
                 return;
             }
-            drawSprite(g, s, cx, cy, flip);
+            int sx = Math.round(cx() - s.w / 2f) - cx, sy = Math.round(bottom()) - s.h - cy;
+            if (frozen > 0) {
+                g.blit(s, sx, sy, flip, 255, 0);
+                g.blit(s, sx, sy, flip, 150, 0xFF9AE4FF);
+                int bw = s.w + 2, bh = s.h + 2;
+                g.fillA(sx - 1, sy - 1, bw, bh, 0xFFBFF0FF, 70);
+                g.rect(sx - 1, sy - 1, bw, bh, frozen < 60 && (frozen / 4) % 2 == 0 ? 0xFF5AB8F0 : 0xFFFFFFFF);
+                return;
+            }
+            g.blit(s, sx, sy, flip, 255, 0);
+            if (hurtFlash > 0 && (hurtFlash / 2) % 2 == 0) g.blit(s, sx, sy, flip, 170, 0xFFFFFFFF);
         }
 
         void walk(float speed, boolean edgeTurn) {
-            vx = facing * speed;
+            vx = facing * speed * speedK();
             physics(0.4f, 6);
             if ((facing < 0 && hitL) || (facing > 0 && hitR)) facing = -facing;
             else if (edgeTurn && onGround) {
@@ -657,10 +742,126 @@ public final class Ents {
         }
     }
 
+    /** Stone golem: slow but needs three hits (a stomp only takes one). */
+    public static final class Golem extends Enemy {
+        Golem(float tx, float ty) {
+            x = tx;
+            y = ty;
+            w = 14;
+            h = 16;
+            hp = 3;
+            energy = 25;
+        }
+
+        @Override
+        void act() {
+            walk(0.32f, true);
+        }
+
+        @Override
+        Sprite frame() {
+            return Art.golem[(t / 14) % 2];
+        }
+
+        @Override
+        public void render(Gfx g, int cx, int cy) {
+            super.render(g, cx, cy);
+            if (ko == 0 && frozen == 0 && hp < 3)
+                for (int i = 0; i < hp; i++) g.fill((int) x - cx + 2 + i * 4, (int) y - cy - 6, 3, 2, 0xFFE83A3A);
+        }
+    }
+
+    /** Spiky cactus: stands still and fires spines in an arc toward the player. */
+    public static final class Cactus extends Enemy {
+        int cool;
+
+        Cactus(float tx, float ty) {
+            x = tx + 3;
+            y = ty + 4;
+            w = 10;
+            h = 12;
+            hp = 2;
+            energy = 15;
+            stompable = false;
+            cool = 60 + (int) (tx / 5) % 60;
+        }
+
+        @Override
+        void act() {
+            physics(0.4f, 6);
+            Player p = L.player;
+            facing = p.cx() < cx() ? -1 : 1;
+            float d = Math.abs(p.cx() - cx());
+            if (--cool <= 0 && d < 230 && d > 20 && !p.dying) {
+                cool = (int) (150 / speedK());
+                for (int k = -1; k <= 1; k++) {
+                    float sp = 1.6f + k * 0.5f;
+                    L.spawn(new Shot(cx() + facing * 4, y + 3, facing * sp, -3.4f + k * 0.4f, Shot.SPINE));
+                }
+                Sfx.play(Sfx.SPIN);
+            }
+        }
+
+        @Override
+        Sprite frame() {
+            return Art.cactus[cool < 20 ? 1 : 0];
+        }
+
+        @Override
+        boolean spriteFacesRight() {
+            return true;
+        }
+    }
+
+    /** Desert / lava lizard: dashes at the player when it sees him. */
+    public static final class Lizard extends Enemy {
+        int dash, rest = 30;
+
+        Lizard(float tx, float ty) {
+            x = tx + 1;
+            y = ty + 10;
+            w = 14;
+            h = 6;
+            energy = 12;
+        }
+
+        @Override
+        boolean canSquash() {
+            return true;
+        }
+
+        @Override
+        void act() {
+            Player p = L.player;
+            if (dash > 0) {
+                dash--;
+                walk(2.5f, false);
+                if (t % 4 == 0) L.spawn(new Dust(cx() - facing * 6, bottom()));
+            } else {
+                walk(0, false);
+                if (--rest <= 0 && Math.abs(p.cx() - cx()) < 170 && Math.abs(p.cy() - cy()) < 50 && !p.dying) {
+                    facing = p.cx() < cx() ? -1 : 1;
+                    dash = 50;
+                    rest = 70;
+                }
+            }
+        }
+
+        @Override
+        Sprite frame() {
+            return Art.lizard[dash > 0 ? (t / 3) % 2 : 0];
+        }
+
+        @Override
+        boolean spriteFacesRight() {
+            return true;
+        }
+    }
+
     public static final class Slime extends Enemy {
         final int world;
 
-        Slime(float tx, float ty, int world) {
+        public Slime(float tx, float ty, int world) {
             this.world = world;
             x = tx + 2;
             y = ty + 6;

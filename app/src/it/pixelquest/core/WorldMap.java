@@ -122,6 +122,11 @@ public final class WorldMap {
             Sprite sp = boss ? (done ? Art.castleDone : Art.castle) : (done ? Art.nodeDone : Art.node);
             g.blit(sp, x - sp.w / 2, y - sp.h / 2 + (boss ? -4 : 0), false, open ? 255 : 120, 0);
             if (!open) g.blit(Art.lock, x - 3, y - 4);
+            int gr = s.grades[i];
+            if (gr > 0) {
+                int[] gc = {0xFFFFFFFF, 0xFFB0B0C0, 0xFF8AD0FF, 0xFF7CFF7C, 0xFFFFB040, 0xFFFFE040};
+                g.textO(Save.GRADE_NAMES[gr], x + 7, y - 12, gc[gr], 0xFF000000, 1);
+            }
             int gm = s.gems(i);
             if (open && !boss)
                 for (int k = 0; k < 3; k++) g.fill(x - 5 + k * 4, y + 6, 3, 3, (gm & (1 << k)) != 0 ? 0xFF6AC8FF : 0xFF2A2A3A);
@@ -140,6 +145,7 @@ public final class WorldMap {
         int nx = 6 + Gfx.textW(d.code + "  " + d.name, 1) + 8;
         if (!d.boss) for (int k = 0; k < 3; k++) g.blit((s.gems(cur) & (1 << k)) != 0 ? Art.hudGem : Art.hudGemEmpty, nx + k * 14, 15);
         else if (s.isCleared(cur)) g.textO("\u0006 SCONFITTO", nx, 19, 0xFF7CFF7C, 0xFF000000, 1);
+        if (s.grades[cur] > 0) g.textO("GRADO " + Save.GRADE_NAMES[s.grades[cur]], nx + 48, 19, 0xFFFFE070, 0xFF000000, 1);
         // right: lives / coins / gems
         int rx = game.W - 120;
         g.blit(game.hero().icon, rx, 3);

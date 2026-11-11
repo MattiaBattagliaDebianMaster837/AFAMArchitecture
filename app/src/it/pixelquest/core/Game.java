@@ -2,7 +2,7 @@ package it.pixelquest.core;
 
 /** Top-level game: screens, flow between them and persistence. Platform independent. */
 public final class Game {
-    public static final int TITLE = 0, SELECT = 1, MAP = 2, PLAY = 3, PAUSE = 4, GAMEOVER = 5, ENDING = 6, MENU = 7;
+    public static final int TITLE = 0, SELECT = 1, MAP = 2, PLAY = 3, PAUSE = 4, GAMEOVER = 5, ENDING = 6, MENU = 7, SHOP = 8;
 
     public int W, H;
     public Gfx gfx;
@@ -18,6 +18,11 @@ public final class Game {
 
     // transitions
     private int fade, fadeDir, nextScreen = -1, nextParam;
+    // statistics of the current attempt (for the grade) and things carried between levels
+    public int attemptFrames, attemptHits, attemptDeaths, attemptKills;
+    public int carryPower;
+    public float carryEnergy;
+    private boolean restarting;
     // checkpoint memory
     public int checkpointLevel = -1;
     public float checkpointX, checkpointY;
@@ -91,6 +96,10 @@ public final class Game {
                 selCursor = save.hero;
                 audio.music(Music.TITLE);
                 break;
+            case SHOP:
+                shopHero = save.hero;
+                shopRow = 0;
+                break;
             case MAP:
                 level = null;
                 map.enter();
@@ -112,6 +121,10 @@ public final class Game {
 
     private void startLevel(int index) {
         LevelDef def = Levels.get(index);
+        if (!restarting) {
+            attemptFrames = attemptHits = attemptDeaths = attemptKills = 0;
+        }
+        restarting = false;
         boolean fromCk = checkpointLevel == index;
         if (checkpointLevel != index) checkpointLevel = -1;
         level = new Level(this, def, fromCk);
@@ -122,6 +135,9 @@ public final class Game {
     public void onPlayerDied() {
         if (level == null || nextScreen >= 0) return;
         save.lives--;
+        attemptDeaths++;
+        carryPower = Combat.NONE;
+        carryEnergy = level.player.energy * 0.5f;
         if (save.lives <= 0) {
             save.lives = 5;
             checkpointLevel = -1;
@@ -129,6 +145,7 @@ public final class Game {
             go(GAMEOVER, 0);
         } else {
             save.store();
+            restarting = true;
             go(PLAY, level.def.index);
         }
     }
@@ -136,6 +153,9 @@ public final class Game {
     public void onLevelClear(Level l) {
         if (nextScreen >= 0) return;
         int idx = l.def.index;
+        if (l.grade > save.grades[idx]) save.grades[idx] = l.grade;
+        carryPower = l.player.power;
+        carryEnergy = l.player.energy;
         save.cleared |= 1 << idx;
         save.gems[idx] |= l.gems;
         boolean first = save.unlocked <= idx;
@@ -170,6 +190,8 @@ public final class Game {
         frame++;
         screenT++;
         touch.enabled = screen == PLAY || screen == MAP;
+        touch.showS = screen == PLAY && level != null;
+        touch.sFill = level != null ? level.player.energy / Player.ENERGY_MAX : 0;
         touch.poll();
         input.latch(touch);
         input.backP = backPresses.getAndSet(0) > 0;
@@ -196,6 +218,7 @@ public final class Game {
             case PLAY: updatePlay(); break;
             case PAUSE: updatePause(); break;
             case MENU: updatePause(); break;
+            case SHOP: updateShop(); break;
             case GAMEOVER:
                 if (screenT > 90 && (input.aP || !touch.taps.isEmpty() || input.backP)) go(MAP, 0);
                 break;
@@ -232,15 +255,23 @@ public final class Game {
         }
         boolean confirm = input.aP;
         for (float[] tp : touch.taps) {
-            int card = cardAt(tp[0], tp[1]);
-            if (card >= 0) {
-                if (card == selCursor) confirm = true;
-                else {
-                    selCursor = card;
-                    Sfx.play(Sfx.SELECT);
+            float x = tp[0], y = tp[1];
+            if (y > 190) { // portrait strip
+                int k = portraitAt(x);
+                if (k >= 0) {
+                    if (k == selCursor) confirm = true;
+                    else {
+                        selCursor = k;
+                        Sfx.play(Sfx.SELECT);
+                    }
                 }
-            }
-            if (tp[1] > H - 26 && Math.abs(tp[0] - W / 2f) < 70) confirm = true;
+            } else if (x < W / 2f - 130) {
+                selCursor = (selCursor + n - 1) % n;
+                Sfx.play(Sfx.SELECT);
+            } else if (x > W / 2f + 130) {
+                selCursor = (selCursor + 1) % n;
+                Sfx.play(Sfx.SELECT);
+            } else if (y > 26) confirm = true;
         }
         if (confirm && screenT > 10) {
             save.hero = selCursor;
@@ -250,17 +281,11 @@ public final class Game {
         }
     }
 
-    private int cardW() {
-        return Math.min(220, (W - 36) / 2);
-    }
-
-    private int cardAt(float x, float y) {
-        int cw = cardW(), gap = 12;
-        int x0 = W / 2 - cw - gap / 2;
-        if (y < 32 || y > 32 + 160) return -1;
-        if (x >= x0 && x < x0 + cw) return 0;
-        if (x >= x0 + cw + gap && x < x0 + 2 * cw + gap) return 1;
-        return -1;
+    private int portraitAt(float x) {
+        int n = Hero.ALL.length;
+        int x0 = W / 2 - n * 24 / 2;
+        int k = (int) Math.floor((x - x0) / 24);
+        return k >= 0 && k < n ? k : -1;
     }
 
     private void updatePlay() {
@@ -278,10 +303,10 @@ public final class Game {
 
     // menu item ids
     private static final int I_CONTINUE = 0, I_CONTROLS = 1, I_VIBRATION = 2, I_MUSIC = 3, I_SFX = 4, I_EXIT_LEVEL = 5,
-            I_HERO = 6, I_TITLE = 7;
+            I_HERO = 6, I_TITLE = 7, I_SHOP = 8;
 
     private int[] menuIds() {
-        if (screen == MENU) return new int[]{I_CONTINUE, I_CONTROLS, I_VIBRATION, I_MUSIC, I_SFX, I_HERO, I_TITLE};
+        if (screen == MENU) return new int[]{I_CONTINUE, I_SHOP, I_HERO, I_CONTROLS, I_VIBRATION, I_MUSIC, I_SFX, I_TITLE};
         return new int[]{I_CONTINUE, I_CONTROLS, I_VIBRATION, I_MUSIC, I_SFX, I_EXIT_LEVEL};
     }
 
@@ -294,6 +319,7 @@ public final class Game {
             case I_SFX: return "EFFETTI: " + (save.sfx ? "SI" : "NO");
             case I_EXIT_LEVEL: return "ESCI DAL LIVELLO";
             case I_HERO: return "CAMBIA PERSONAGGIO";
+            case I_SHOP: return "POTENZIAMENTI (NEGOZIO)";
             default: return "SCHERMATA DEL TITOLO";
         }
     }
@@ -363,6 +389,8 @@ public final class Game {
                 Sfx.play(Sfx.SELECT);
                 break;
             case I_EXIT_LEVEL:
+                carryPower = level.player.power;
+                carryEnergy = level.player.energy;
                 checkpointLevel = -1;
                 go(MAP, 0);
                 break;
@@ -373,11 +401,15 @@ public final class Game {
             case I_TITLE:
                 go(TITLE, 0);
                 break;
+            case I_SHOP:
+                Sfx.play(Sfx.CONFIRM);
+                go(SHOP, 0);
+                break;
         }
     }
 
     private int pauseItemY(int i) {
-        return 62 + i * 19;
+        return 56 + i * 18;
     }
 
     // ------------------------------------------------------------------ render
@@ -390,6 +422,7 @@ public final class Game {
             case PLAY: renderPlay(g, true); break;
             case PAUSE: renderPause(g); break;
             case MENU: renderPause(g); break;
+            case SHOP: renderShop(g); break;
             case GAMEOVER: renderGameOver(g); break;
             case ENDING: renderEnding(g); break;
         }
@@ -401,7 +434,7 @@ public final class Game {
         level.renderHud(g);
         if (controls && level.state == Level.PLAY) {
             touch.visible = true;
-            touch.draw(g, hero().punch() ? "PUGNO" : "SPARO", true, true);
+            touch.draw(g, hero().cLabel(), true, true);
         }
     }
 
@@ -457,7 +490,7 @@ public final class Game {
         // slime chasing for fun
         g.blit(Art.slime[0][(frame / 12) % 2].scaled(2), W / 2 + 70, gy - 22);
         if ((frame / 30) % 2 == 0) g.textC("TOCCA PER INIZIARE", W / 2, H - 14, 0xFFFFFFFF, 0xFF000000, 1);
-        g.text("V1.1", W - 28, H - 10, 0xFFFFFFFF, 1, 160);
+        g.text("V1.2", W - 28, H - 10, 0xFFFFFFFF, 1, 160);
     }
 
     private void renderSelect(Gfx g) {
@@ -466,37 +499,42 @@ public final class Game {
             int sx = (k * 97 + frame / 3) % W, sy = (k * 53) % H;
             g.pset(sx, sy, (k + frame / 10) % 5 == 0 ? 0xFFFFFFFF : 0xFF8A80C0);
         }
-        g.textC("SCEGLI IL PERSONAGGIO", W / 2, 10, 0xFFFFE070, 0xFF000000, 2);
-        int cw = cardW(), gap = 12;
-        int x0 = W / 2 - cw - gap / 2;
-        for (int i = 0; i < Hero.ALL.length; i++) {
-            Hero h = Hero.ALL[i];
-            int cx = x0 + i * (cw + gap), cy = 32;
-            boolean sel = i == selCursor;
-            int ch = 160;
-            g.fillA(cx, cy, cw, ch, sel ? 0xFF2A2A5A : 0xFF14102A, 220);
-            g.rect(cx, cy, cw, ch, sel ? 0xFFFFD040 : 0xFF5A5A8A);
-            if (sel) g.rect(cx + 1, cy + 1, cw - 2, ch - 2, 0xFFFFD040);
-            // hero preview
-            Sprite s;
-            if (sel) s = h.frames[(screenT / 40) % 3 == 2 ? HeroArt.ACT1 : HeroArt.RUN0 + (frame / 5) % 4];
-            else s = h.frames[HeroArt.IDLE0 + (frame / 30) % 2];
-            Sprite big = s.scaled(2);
-            g.fillA(cx + 6, cy + 6, 48, 62, 0xFF000000, 60);
-            g.blit(big, cx + 30 - big.w / 2, cy + 8);
-            // name & stats
-            int tx = cx + 60;
-            String[] nm = h.name.split(" ");
-            g.textO(nm[0], tx, cy + 8, sel ? 0xFFFFFFFF : 0xFFC0C0D8, 0xFF000000, 1);
-            g.textO(nm.length > 1 ? nm[1] : "", tx, cy + 18, sel ? 0xFFFFFFFF : 0xFFC0C0D8, 0xFF000000, 1);
-            stat(g, tx, cy + 32, "VELOCITÀ", h.statSpeed, cw - 64);
-            stat(g, tx, cy + 44, "SALTO", h.statJump, cw - 64);
-            stat(g, tx, cy + 56, "POTENZA", h.statPower, cw - 64);
-            g.textO("ABILITÀ (C): " + h.ability, cx + 6, cy + 76, 0xFFFF9A5A, 0xFF000000, 1);
-            g.text(h.abilityDesc, cx + 6, cy + 90, 0xFFE0E0F0);
-            g.text("COMUNI: CORSA, SALTO,\nSPIN, WALL JUMP, TRIPLO", cx + 6, cy + 128, 0xFF9A9AC0);
+        g.textC("SCEGLI IL PERSONAGGIO", W / 2, 6, 0xFFFFE070, 0xFF000000, 2);
+        Hero h = Hero.ALL[selCursor];
+        int cw = 260, ch = 160, cx = W / 2 - cw / 2, cy = 26;
+        g.fillA(cx, cy, cw, ch, 0xFF2A2A5A, 225);
+        g.rect(cx, cy, cw, ch, 0xFFFFD040);
+        g.rect(cx + 1, cy + 1, cw - 2, ch - 2, 0xFFFFD040);
+        // arrows
+        int bob = (frame / 15) % 2;
+        g.textC("<", cx - 16 - bob, cy + ch / 2 - 10, 0xFFFFE070, 0xFF000000, 3);
+        g.textC(">", cx + cw + 16 + bob, cy + ch / 2 - 10, 0xFFFFE070, 0xFF000000, 3);
+        // animated preview
+        Sprite s = h.frames[(screenT / 40) % 3 == 2 ? HeroArt.ACT1 : HeroArt.RUN0 + (frame / 5) % 4];
+        Sprite big = s.scaled(2);
+        g.fillA(cx + 6, cy + 6, 50, 62, 0xFF000000, 60);
+        g.blit(big, cx + 31 - big.w / 2, cy + 8);
+        int tx = cx + 62;
+        String[] nm = h.name.split(" ");
+        g.textO(nm[0], tx, cy + 8, 0xFFFFFFFF, 0xFF000000, 1);
+        g.textO(nm.length > 1 ? nm[1] : "", tx, cy + 18, 0xFFFFFFFF, 0xFF000000, 1);
+        int u = save.upgrade(h.id);
+        g.textO("LV " + (u + 1), cx + cw - 30, cy + 8, 0xFF7CFF7C, 0xFF000000, 1);
+        stat(g, tx, cy + 32, "VELOCIT\u00c0", h.statSpeed, cw - 66);
+        stat(g, tx, cy + 43, "SALTO", h.statJump, cw - 66);
+        stat(g, tx, cy + 54, "POTENZA", h.statPower, cw - 66);
+        g.textO("C: " + h.ability, cx + 6, cy + 74, 0xFFFF9A5A, 0xFF000000, 1);
+        g.text(h.abilityDesc, cx + 6, cy + 86, 0xFFE0E0F0);
+        g.textO("\u0006 SPECIALE: " + h.special, cx + 6, cy + 112, 0xFFFFE070, 0xFF000000, 1);
+        g.text(h.specialDesc, cx + 6, cy + 124, 0xFFE0E0F0);
+        // portraits
+        int n = Hero.ALL.length, x0 = W / 2 - n * 24 / 2;
+        for (int i = 0; i < n; i++) {
+            int px = x0 + i * 24;
+            if (i == selCursor) g.fillA(px, 190, 22, 20, 0xFFFFE070, 120);
+            g.blit(Hero.ALL[i].icon, px + 3, 192);
         }
-        if ((frame / 25) % 2 == 0) g.textC("A / TOCCA DI NUOVO: CONFERMA", W / 2, H - 18, 0xFFFFFFFF, 0xFF000000, 1);
+        if ((frame / 25) % 2 == 0) g.textC("A / TOCCA LA SCHEDA: CONFERMA", W / 2, H - 11, 0xFFFFFFFF, 0xFF000000, 1);
     }
 
     private void stat(Gfx g, int x, int y, String label, int v, int width) {
@@ -506,6 +544,127 @@ public final class Game {
             g.fill(px + i * 8, y, 6, 6, i < v ? 0xFFFFD040 : 0xFF3A3A5A);
             if (i < v) g.fill(px + i * 8, y, 6, 1, 0xFFFFF0A0);
         }
+    }
+
+    // ------------------------------------------------------------------ shop
+    private int shopHero, shopRow;
+    private String shopMsg;
+    private int shopMsgT;
+
+    private static final int LIFE_COST = 60;
+
+    private void updateShop() {
+        if (shopMsgT > 0) shopMsgT--;
+        if (input.backP || input.bP) {
+            Sfx.play(Sfx.PAUSE);
+            go(MAP, 0);
+            return;
+        }
+        int n = Hero.ALL.length;
+        if (input.leftP) {
+            shopHero = (shopHero + n - 1) % n;
+            Sfx.play(Sfx.SELECT);
+        }
+        if (input.rightP) {
+            shopHero = (shopHero + 1) % n;
+            Sfx.play(Sfx.SELECT);
+        }
+        if (input.upP) shopRow = (shopRow + 3) % 4;
+        if (input.downP) shopRow = (shopRow + 1) % 4;
+        int chosen = input.aP ? shopRow : -1;
+        for (float[] tp : touch.taps) {
+            float x = tp[0], y = tp[1];
+            if (y < 96 && x < W / 2f - 100) {
+                shopHero = (shopHero + n - 1) % n;
+                Sfx.play(Sfx.SELECT);
+            } else if (y < 96 && x > W / 2f + 100) {
+                shopHero = (shopHero + 1) % n;
+                Sfx.play(Sfx.SELECT);
+            }
+            for (int r = 0; r < 4; r++) {
+                int ry = shopRowY(r);
+                if (y >= ry - 3 && y < ry + 17 && Math.abs(x - W / 2f) < 150) {
+                    shopRow = r;
+                    chosen = r;
+                }
+            }
+        }
+        if (chosen < 0) return;
+        Hero h = Hero.ALL[shopHero];
+        int u = save.upgrade(h.id);
+        if (chosen == 0 || chosen == 1) {
+            int lv = chosen; // 0 -> buy level 1, 1 -> buy level 2
+            if (u > lv) msg("GI\u00c0 ACQUISTATO");
+            else if (u < lv) msg("PRIMA COMPRA IL LIVELLO PRECEDENTE");
+            else if (save.totalCoins < Hero.UPGRADE_COST[lv]) msg("MONETE INSUFFICIENTI");
+            else {
+                save.totalCoins -= Hero.UPGRADE_COST[lv];
+                save.upgrades[h.id] = lv + 1;
+                save.store();
+                Sfx.play(Sfx.POWER);
+                msg(h.upgrades[lv] + " SBLOCCATO!");
+            }
+        } else if (chosen == 2) {
+            if (save.totalCoins < LIFE_COST) msg("MONETE INSUFFICIENTI");
+            else if (save.lives >= 99) msg("VITE AL MASSIMO");
+            else {
+                save.totalCoins -= LIFE_COST;
+                save.lives++;
+                save.store();
+                Sfx.play(Sfx.LIFE);
+                msg("+1 VITA!");
+            }
+        } else {
+            Sfx.play(Sfx.PAUSE);
+            go(MAP, 0);
+        }
+    }
+
+    private void msg(String m) {
+        shopMsg = m;
+        shopMsgT = 120;
+        if (!m.endsWith("!")) Sfx.play(Sfx.EMPTY);
+    }
+
+    private int shopRowY(int r) {
+        return 104 + r * 24;
+    }
+
+    private void renderShop(Gfx g) {
+        for (int y = 0; y < H; y++) g.fill(0, y, W, 1, Gfx.mix(0xFF142A30, 0xFF2A4A3A, y / (float) H));
+        g.textC("POTENZIAMENTI", W / 2, 6, 0xFFFFE070, 0xFF000000, 2);
+        g.blit(Art.hudCoin, W - 70, 6);
+        g.textO("" + save.totalCoins, W - 56, 10, 0xFFFFE070, 0xFF000000, 1);
+        Hero h = Hero.ALL[shopHero];
+        int u = save.upgrade(h.id);
+        // hero header
+        int bob = (frame / 15) % 2;
+        g.textC("<", W / 2 - 120 - bob, 44, 0xFFFFE070, 0xFF000000, 3);
+        g.textC(">", W / 2 + 120 + bob, 44, 0xFFFFE070, 0xFF000000, 3);
+        Sprite big = h.frames[HeroArt.IDLE0 + (frame / 30) % 2].scaled(2);
+        g.blit(big, W / 2 - 90, 26);
+        g.textO(h.name, W / 2 - 40, 34, 0xFFFFFFFF, 0xFF000000, 1);
+        g.textO("ABILIT\u00c0: " + h.ability, W / 2 - 40, 48, 0xFFFF9A5A, 0xFF000000, 1);
+        g.textO("LIVELLO " + (u + 1) + "/3", W / 2 - 40, 62, 0xFF7CFF7C, 0xFF000000, 1);
+        String[] labels = new String[4];
+        for (int lv = 0; lv < 2; lv++) {
+            String state = u > lv ? "OK" : Hero.UPGRADE_COST[lv] + "";
+            labels[lv] = "LV" + (lv + 2) + " " + h.upgrades[lv] + "   [" + (u > lv ? "ACQUISTATO" : state + " MONETE") + "]";
+        }
+        labels[2] = "VITA EXTRA  [" + LIFE_COST + "]   (VITE: " + save.lives + ")";
+        labels[3] = "TORNA ALLA MAPPA";
+        for (int r = 0; r < 4; r++) {
+            int y = shopRowY(r);
+            boolean sel = r == shopRow;
+            boolean owned = r < 2 && u > r;
+            g.fillA(W / 2 - 150, y - 4, 300, 18, sel ? 0xFFFFFFFF : 0xFF000000, sel ? 50 : 90);
+            if (sel) g.rect(W / 2 - 150, y - 4, 300, 18, 0xFFFFE070);
+            int col = owned ? 0xFF7CFF7C : sel ? 0xFFFFE070 : 0xFFFFFFFF;
+            g.textO(labels[r], W / 2 - 144, y + 1, col, 0xFF000000, 1);
+        }
+        if (shopRow < 2) g.textC(h.upgradeDesc[shopRow], W / 2, 200, 0xFFB0F0C0, 0xFF000000, 1);
+        if (shopMsgT > 0 && shopMsg != null) g.textC(shopMsg, W / 2, 84, 0xFFFFE070, 0xFF000000, 1);
+        g.textC("A: COMPRA   B: ESCI", W / 2, H - 12, 0xFFC0C0D8, 0xFF000000, 1);
     }
 
     private void renderGameOver(Gfx g) {

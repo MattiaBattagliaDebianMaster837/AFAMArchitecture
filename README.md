@@ -1,7 +1,8 @@
 # Pixel Quest – Mattia & Giuseppe
 
 Un platform 2D in **pixel art** per **Android**, con mappa del mondo, 4 mondi, 16 livelli e 4 boss.
-I protagonisti sono **Mattia Battaglia** e **Giuseppe Mandanici**, disegnati in pixel art a partire dalle loro foto.
+Ci sono 5 personaggi giocabili, disegnati in pixel art a partire dalle loro foto: **Mattia Battaglia**, **Giuseppe Mandanici**,
+**Francesco Inzerillo**, **Andrea Sapienza** e **Paolo Zingales**.
 
 **APK pronto da installare:** [`release/PixelQuest.apk`](release/PixelQuest.apk)
 
@@ -26,6 +27,7 @@ fatte con `./build.sh` usano la stessa chiave, quindi si installano sopra la ver
 | **A** | Salta (tieni premuto per saltare più in alto) |
 | **B** | Salto **spin** (distrugge anche i ricci spinosi e i proiettili) |
 | **C** | Abilità del personaggio |
+| **★ SPECIALE** | Mossa speciale, quando la barra dell'energia è piena |
 | ⏸ in alto a destra | Pausa |
 
 Reattività dei comandi:
@@ -46,14 +48,47 @@ Combinazioni comuni a tutti i personaggi:
 - Sono supportati anche tastiera e gamepad (frecce/WASD, Spazio/Z = A, X = B, C = C, Invio = pausa).
 
 ## Personaggi
-| | Mattia Battaglia | Giuseppe Mandanici |
+| Personaggio | Abilità (C) | Mossa speciale (★) |
 |---|---|---|
-| Aspetto | Capelli ricci scuri, pile ruggine e crema | Capelli ricci, occhiali verdi tondi, barba, felpa terracotta |
-| Velocità | ★★★★★ | ★★★★☆ |
-| Salto | ★★★☆☆ | ★★★★★ |
-| Abilità (C) | **Pugno**: stende i nemici, rompe i mattoni, respinge i proiettili | **Pistola**: spara a distanza, **2 colpi ogni 10 secondi**, danno doppio ai boss |
+| **Mattia Battaglia**: ricci scuri, pile ruggine e crema | **Pugno**: stende i nemici, spacca i mattoni, respinge i proiettili | **Super pugno**: onda d'urto enorme davanti a lui (danno 5 a tutti, 4 ai boss) |
+| **Giuseppe Mandanici**: occhiali verdi, barba, felpa terracotta | **Pistola**: 2 colpi ogni 10 secondi, danno 2 | **Scagnozzi**: due scagnozzi sparano ai nemici per 5,5 secondi |
+| **Francesco Inzerillo**: ricci neri, apparecchio, maglia crema | **Moneta d'oro**: dalla mano escono banconote e parte una moneta che rimbalza 3 volte smorzandosi e colpisce tutti i nemici che incontra (una ogni 3 s) | **Tocco di Re Mida**: diventa d'oro con la corona e una fontana di monete colpisce tutto per 3 s; ogni nemico colpito dà una moneta |
+| **Andrea Sapienza**: frangia scura, maglia nera | **Mazza totem** (nera, a forma di persona): swing ogni secondo che rispedisce indietro palle di cannone e proiettili e scaglia via i nemici, che diventano proiettili | **Totem di fuoco**: il totem gigante appare sopra di lui e lancia palle di fuoco per 4,5 s |
+| **Paolo Zingales**: ciuffo, barba folta, maglia grigia | **Pallone**: calcio con 3 grandi rimbalzi, danno 2 (si ricarica in 2,5 s) | **Super tiro**: un pallone gigante va dritto e travolge nemici e mattoni (5 ai boss) |
 
-Il personaggio si sceglie all'avvio e si può cambiare in qualsiasi momento dalla mappa (tasto C "EROE" o dal menu).
+Tutti hanno in comune corsa, salto variabile, spin, wall jump e triplo salto con capriola. Il personaggio si sceglie
+all'avvio e si cambia dalla mappa (tasto C "EROE" o dal menu).
+
+### Energia e mosse speciali
+La barra ★ in alto si riempie sconfiggendo nemici (+12, golem +25), raccogliendo monete (+1) e gemme (+20) e colpendo
+i boss (+8). Quando è piena il tasto **SPECIALE** lampeggia. Morendo si conserva metà dell'energia.
+
+### Power-up
+Nei blocchi ci sono **fiori di fuoco** e **fiori di ghiaccio**:
+- **Fuoco**: l'abilità diventa infuocata (+1 danno; il pugno e la mazza lanciano anche una palla di fuoco).
+- **Ghiaccio**: l'abilità congela i nemici, che diventano blocchi di ghiaccio innocui da frantumare; i boss vengono rallentati.
+
+Se vieni colpito perdi il fiore invece di un cuore. Ci sono anche cuori, stella dell'invincibilità e pozione vita extra.
+
+### Negozio (potenziamenti con le monete)
+Dalla mappa: **B MENU, poi POTENZIAMENTI**. Le monete restano tue e si spendono qui; ogni 100 monete raccolte ricevi
+comunque una vita.
+| | Livello 2 (120 monete) | Livello 3 (280 monete) |
+|---|---|---|
+| Mattia | Doppio pugno (due pugni di fila) | Pugno rapido e più lungo |
+| Giuseppe | 3 colpi ogni 10 s | 4 colpi ogni 10 s |
+| Francesco | 2 monete pronte | Ricarica in 2 s |
+| Andrea | Mazza pesante: più grande, 2 danni ai boss | Swing ogni 0,6 s |
+| Paolo | 2 palloni pronti | Tiro potente: 5 rimbalzi, più veloce |
+
+Si può comprare anche una **vita extra** (60 monete).
+
+### Grado di superamento
+Alla fine di ogni livello compare il riepilogo: tempo, danni subiti, cadute, nemici, monete e gemme. Il grado va da **S** a **D**:
+- **S**: livello finito entro il tempo indicato, senza subire danni e senza cadute.
+- **A / B / C / D**: si perdono punti per il tempo in più, per ogni danno (−12) e per ogni caduta (−20); ogni gemma vale +3.
+
+Il miglior grado di ogni livello appare sulla mappa.
 
 ## Mondi e livelli
 Ogni mondo ha 3 livelli e un castello finale con un boss. Ogni livello normale nasconde **3 gemme** (48 in totale).
@@ -65,11 +100,16 @@ Ogni mondo ha 3 livelli e un castello finale con un boss. Ogni livello normale n
 | 3 – Picchi Ghiacciati | Pendii Innevati, Grotta di Cristallo, Vetta Gelata (scalata verticale) | **Yeti Glaciale**: palle di neve e schianti che fanno cadere stalattiti |
 | 4 – Fortezza di Lava | Fiume di Magma, Fucina Oscura, Torre delle Ombre (scalata verticale) | **Lord Magmus**: si teletrasporta e lancia ventagli di fuoco |
 
-Nemici: gelatine, ricci spinosi (si battono con lo spin, il pugno o la pistola), pipistrelli, rane, pinguini,
-spiriti di fuoco, cannoni, massi schiaccianti. Oggetti: monete (100 = 1 vita), cuori, stella dell'invincibilità,
+Nemici: gelatine, ricci spinosi (si battono con lo spin o con le abilità), pipistrelli, rane, pinguini,
+spiriti di fuoco, cannoni, massi schiaccianti, **golem di pietra** (3 colpi), **cactus sparaspine** e **lucertole** che
+scattano verso di te. I nemici sono più veloci nei mondi avanzati e i boss hanno più vita. Oggetti: monete (100 = 1 vita), cuori, stella dell'invincibilità,
 pozione vita extra, molle, piattaforme mobili e che cadono, checkpoint.
 
 ![Boss](docs/screenshots/boss.png)
+
+| Mosse speciali | Negozio |
+|---|---|
+| ![Speciali](docs/screenshots/speciali.png) | ![Negozio](docs/screenshots/negozio.png) |
 
 ## Struttura del progetto
 ```

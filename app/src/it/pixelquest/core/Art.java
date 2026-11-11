@@ -18,6 +18,10 @@ public final class Art {
     public static Sprite[] puff, sparkle;
     public static Sprite hudHeart, hudHeartEmpty, hudCoin, hudGem, hudGemEmpty, hudBullet, hudBulletEmpty;
     public static Sprite node, nodeDone, castle, castleDone, lock;
+    // new: power-ups, hero projectiles, specials, new enemies
+    public static Sprite fireFlower, iceFlower, coinShot, soccer, giantBall, banknote, crown, spine, batTotem, bigTotem;
+    public static Sprite[] orbFire, orbIce, golem, cactus, lizard, henchman;
+    public static Sprite hudEnergy, hudFire, hudIce;
 
     static HashMap<Character, Integer> pal(Object... kv) {
         HashMap<Character, Integer> m = new HashMap<>();
@@ -317,6 +321,189 @@ public final class Art {
         castle = makeCastle(0xFF8A8A9A);
         castleDone = makeCastle(0xFFE0C050);
         lock = raw(new String[]{".kkk.", "k...k", "k...k", "YYYYY", "YYkYY", "YYkYY", "YYYYY"}, 'k', 0xFF6A6A7A, 'Y', 0xFFE0B030).outlined(OUT);
+        initExtra();
+    }
+
+    static Sprite flower(int petal, int petalD, int center) {
+        return raw(new String[]{
+                "..pPp..",
+                ".pPPPp.",
+                "pPPcPPp",
+                "pPcccPp",
+                ".pPPPp.",
+                "...g...",
+                ".gGg.g.",
+                "..gGgG.",
+                "...g...",
+        }, 'p', petalD, 'P', petal, 'c', center, 'g', 0xFF2E8A34, 'G', 0xFF5BC24A).outlined(OUT);
+    }
+
+    static Sprite orb(int c0, int c1, int c2, int r) {
+        int d = r * 2 + 1;
+        Sprite s = new Sprite(d, d);
+        for (int y = 0; y < d; y++)
+            for (int x = 0; x < d; x++) {
+                float dx = x - r, dy = y - r;
+                float dd = dx * dx + dy * dy;
+                if (dd <= r * r + 0.5f) s.set(x, y, dd < r * r * 0.25f ? c0 : dd < r * r * 0.6f ? c1 : c2);
+            }
+        return s;
+    }
+
+    static void initExtra() {
+        fireFlower = flower(0xFFFF6A2A, 0xFFC0301A, 0xFFFFE04A);
+        iceFlower = flower(0xFF8AE0FF, 0xFF3A8ACC, 0xFFFFFFFF);
+        orbFire = new Sprite[]{orb(0xFFFFF4A0, 0xFFFFB030, 0xFFE8501A, 4).outlined(0xFF6A1A08), orb(0xFFFFFFFF, 0xFFFFD040, 0xFFFF7A2A, 4).outlined(0xFF6A1A08)};
+        orbIce = new Sprite[]{orb(0xFFFFFFFF, 0xFFBFF0FF, 0xFF5AB8F0, 4).outlined(0xFF1A4A7A), orb(0xFFFFFFFF, 0xFFDFF8FF, 0xFF8AD0FF, 4).outlined(0xFF1A4A7A)};
+        coinShot = coinFrame(10, false);
+        soccer = raw(new String[]{
+                "..wwww..",
+                ".wwkkww.",
+                "wwkkkwww",
+                "wwwkwwkw",
+                "wkwwwkkw",
+                "wkkwwkkw",
+                ".wwwkww.",
+                "..wwww..",
+        }, 'w', 0xFFF6F6F6, 'k', 0xFF1A1A22).outlined(OUT);
+        giantBall = soccer.scaled(4);
+        banknote = raw(new String[]{
+                "GGGGGGGGG",
+                "GgGGgGGgG",
+                "GGgWWWgGG",
+                "GgGGgGGgG",
+                "GGGGGGGGG",
+        }, 'G', 0xFF5AB86A, 'g', 0xFF2E7A3E, 'W', 0xFFE8F4D8).outlined(0xFF1A3A20);
+        crown = raw(new String[]{
+                "Y..Y..Y",
+                "YY.Y.YY",
+                "YYYYYYY",
+                "YrYbYrY",
+                "YYYYYYY",
+        }, 'Y', 0xFFFFC830, 'r', 0xFFE03050, 'b', 0xFF3A8AE0).outlined(OUT);
+        spine = raw(new String[]{"..W", "WWW", "..W"}, 'W', 0xFFF4F0D8).outlined(0xFF4A3A20);
+        // black person-shaped totem bat (handle at the bottom)
+        batTotem = raw(new String[]{
+                ".kkk.",
+                "kwkwk",
+                "kkkkk",
+                ".kgk.",
+                "kkkkk",
+                "kkkkk",
+                "kkgkk",
+                ".kkk.",
+                ".kkk.",
+                ".kkk.",
+                "..k..",
+                "..b..",
+                "..b..",
+                "..b..",
+        }, 'k', 0xFF16161C, 'w', 0xFFE8E8F0, 'g', 0xFF3A3A48, 'b', 0xFF6A4A2A).outlined(0xFFB0B0C0);
+        bigTotem = raw(new String[]{
+                "...kkkk...",
+                "..kkkkkk..",
+                "..kOkkOk..",
+                "..kkkkkk..",
+                "..kkRRkk..",
+                "...kkkk...",
+                ".kkkkkkkk.",
+                "kkkgkkgkkk",
+                "kk.kkkk.kk",
+                "k..kkkk..k",
+                "...kggk...",
+                "...kkkk...",
+                "...kkkk...",
+                "..kk..kk..",
+                "..kk..kk..",
+        }, 'k', 0xFF16161C, 'O', 0xFFFFB030, 'R', 0xFFE83A1A, 'g', 0xFF3A3A48).outlined(0xFFFF7A2A).scaled(2);
+        Object[] gp = {'S', 0xFF8A8478, 's', 0xFF5E5A50, 'L', 0xFFB0AA9C, 'E', 0xFFFF6A2A, 'm', 0xFF3A3630};
+        golem = new Sprite[]{spr(new String[]{
+                "....SSSSSS....",
+                "...SLLSSSSS...",
+                "...SEESSEES...",
+                "...SSSmmSSS...",
+                ".sSSSSSSSSSSs.",
+                "sSSLSSSSSSSSSs",
+                "sSSSSSsSSSSSSs",
+                "sS.SSSSSSSSS.s",
+                "...SSSsSSSSS..",
+                "...SSS..SSS...",
+                "..sSSs..sSSs..",
+        }, gp), spr(new String[]{
+                "....SSSSSS....",
+                "...SLLSSSSS...",
+                "...SEESSEES...",
+                "...SSSmmSSS...",
+                ".sSSSSSSSSSSs.",
+                "sSSLSSSSSSSSSs",
+                "sSSSSSsSSSSSSs",
+                "sS.SSSSSSSSS.s",
+                "...SSSsSSSSS..",
+                "...SSS..SSS...",
+                "...sSSs.sSSs..",
+        }, gp)};
+        Object[] cp = {'G', 0xFF3E9A4A, 'g', 0xFF2A6A34, 'L', 0xFF7AD07A, 'W', 0xFFF4F0D8, 'E', 0xFF1A1018, 'P', 0xFFF06A8A, 'p', 0xFFB8865A};
+        cactus = new Sprite[]{spr(new String[]{
+                "....PP....",
+                "...GLGG...",
+                "..WGLGGW..",
+                "...GEGEG..",
+                "W..GGGGG..",
+                "GG.GLGGG.W",
+                "GG.GLGGGGG",
+                "GGGGLGGGGG",
+                ".GGGLGGG..",
+                "...GLGGG..",
+                "...gGGGg..",
+                "..pppppp..",
+        }, cp), spr(new String[]{
+                "....PP....",
+                "...GLGG...",
+                "..WGLGGW..",
+                "...GEGEG..",
+                "...GGGGG..",
+                "W..GLGGG.W",
+                "GG.GLGGGGG",
+                "GGGGLGGGGG",
+                ".GGGLGGG..",
+                "...GLGGG..",
+                "...gGGGg..",
+                "..pppppp..",
+        }, cp)};
+        Object[] lp = {'G', 0xFFD8A030, 'g', 0xFF9A6A18, 'E', 0xFF1A1018, 'W', 0xFFFFFFFF, 'R', 0xFFE84A3A};
+        lizard = new Sprite[]{spr(new String[]{
+                "..........GGG...",
+                "gg.......GWEGG..",
+                ".gGGGGGGGGGGGGR.",
+                "..gGGGGGGGGGG...",
+                "...g.g....g.g...",
+        }, lp), spr(new String[]{
+                "..........GGG...",
+                ".........GWEGG..",
+                "gggGGGGGGGGGGGR.",
+                "..gGGGGGGGGGG...",
+                "....g.g..g.g....",
+        }, lp)};
+        Object[] hp = {'K', 0xFF1E1E26, 'k', 0xFF34343E, 'S', 0xFFE0AE8A, 'G', 0xFF101014, 'W', 0xFFFFFFFF, 'H', 0xFF2A1A12, 'g', 0xFF4A4A56};
+        henchman = new Sprite[]{spr(new String[]{
+                "..HHHH....",
+                ".HHHHHH...",
+                ".HSSSSS...",
+                ".SGGGGGG..",
+                ".SSSSSS...",
+                "..SSSS....",
+                ".KKWWKK...",
+                "KKKKWKKgg.",
+                "KKKKKKKSgg",
+                "KKKKKKK...",
+                ".KKKKKK...",
+                ".kk..kk...",
+                ".kk..kk...",
+                "GGG.GGG...",
+        }, hp)};
+        hudEnergy = raw(new String[]{"..Y..", ".YYY.", "YYYYY", ".YYY.", "Y...Y"}, 'Y', 0xFFFFE04A).outlined(OUT);
+        hudFire = fireFlower;
+        hudIce = iceFlower;
     }
 
     // ------------------------------------------------------------------ helpers

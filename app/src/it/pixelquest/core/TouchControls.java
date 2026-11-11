@@ -17,7 +17,7 @@ import java.util.ArrayList;
  */
 public final class TouchControls {
     public static final int STICK = 0, ARROWS = 1;
-    public static final int NONE = 0, BTN_A = 1, BTN_B = 2, BTN_C = 3, BTN_PAUSE = 4, MOVE = 5;
+    public static final int NONE = 0, BTN_A = 1, BTN_B = 2, BTN_C = 3, BTN_PAUSE = 4, MOVE = 5, BTN_S = 6;
     private static final int MAXP = 10;
     private final int[] pid = new int[MAXP];
     private final float[] px = new float[MAXP], py = new float[MAXP];
@@ -25,7 +25,7 @@ public final class TouchControls {
     private final boolean[] used = new boolean[MAXP];
     private final ArrayList<float[]> pendingTaps = new ArrayList<>();
     // presses that happened since the last poll (kept even if the finger was already lifted)
-    private boolean pendA, pendB, pendC, pendPause;
+    private boolean pendA, pendB, pendC, pendS, pendPause;
     private int pendMoveDir;
 
     public int W = 400, H = 224;
@@ -33,7 +33,10 @@ public final class TouchControls {
     /** When false (menus) touches are only taps: no stick / buttons. */
     public volatile boolean enabled = true;
     public float ax, ay;
-    public boolean a, b, c, pause;
+    public boolean a, b, c, s, pause;
+    /** Special button shown (in levels) and how full the energy bar is (0..1). */
+    public volatile boolean showS;
+    public volatile float sFill;
     public boolean visible = true;
     public boolean stickActive;
     public float baseX, baseY, knobX, knobY;
@@ -69,6 +72,10 @@ public final class TouchControls {
         return new float[]{W - 84, H - 98, 19};
     }
 
+    public float[] btnS() {
+        return new float[]{W - 146, H - 84, 17};
+    }
+
     public float[] btnPause() {
         return new float[]{W - 16, 14, 11};
     }
@@ -93,16 +100,18 @@ public final class TouchControls {
 
     /** Which action button a point on the right side belongs to (nearest button, generous reach). */
     private int buttonAt(float x, float y) {
-        float[] A = btnA(), B = btnB(), C = btnC();
+        float[] A = btnA(), B = btnB(), C = btnC(), S = btnS();
         float dA = dist(x, y, A[0], A[1]) / A[2];
         float dB = dist(x, y, B[0], B[1]) / B[2];
         float dC = dist(x, y, C[0], C[1]) / C[2];
-        float best = Math.min(dA, Math.min(dB, dC));
+        float dS = showS ? dist(x, y, S[0], S[1]) / S[2] : 999;
+        float best = Math.min(Math.min(dA, dB), Math.min(dC, dS));
         // anything in the lower right area counts, even right at the screen edge / corner
         boolean lowerRight = y > H * 0.45f && x > W * 0.55f;
         if (best > 2.8f && !lowerRight) return NONE;
         if (best == dA) return BTN_A;
         if (best == dB) return BTN_B;
+        if (best == dS) return BTN_S;
         return BTN_C;
     }
 
@@ -154,6 +163,7 @@ public final class TouchControls {
                 if (bt == BTN_A) pendA = true;
                 else if (bt == BTN_B) pendB = true;
                 else if (bt == BTN_C) pendC = true;
+                else if (bt == BTN_S) pendS = true;
                 return bt;
             }
         return NONE;
@@ -184,7 +194,7 @@ public final class TouchControls {
 
     public synchronized void cancelAll() {
         for (int i = 0; i < MAXP; i++) used[i] = false;
-        pendA = pendB = pendC = pendPause = false;
+        pendA = pendB = pendC = pendS = pendPause = false;
         pendMoveDir = 0;
     }
 
@@ -209,8 +219,9 @@ public final class TouchControls {
         a = pendA;
         b = pendB;
         c = pendC;
+        s = pendS;
         pause = pendPause;
-        pendA = pendB = pendC = pendPause = false;
+        pendA = pendB = pendC = pendS = pendPause = false;
         stickActive = false;
         anyTouch = false;
         int dirNow = 0;
@@ -240,6 +251,7 @@ public final class TouchControls {
                 if (bt == BTN_A) a = true;
                 else if (bt == BTN_B) b = true;
                 else if (bt == BTN_C) c = true;
+                else if (bt == BTN_S) s = true;
             } else if (role[i] == 3) pause = true;
         }
         if (mode == ARROWS) {
@@ -264,6 +276,7 @@ public final class TouchControls {
         drawBtn(g, btnA(), "A", 0xFF3AB04A, a);
         drawBtn(g, btnB(), "B", 0xFF3A7AE0, b);
         if (showC) drawBtn(g, btnC(), "C", 0xFFE0503A, c);
+        if (showS) drawSpecial(g);
         if (showC && cLabel != null) {
             float[] C = btnC();
             g.textC(cLabel, (int) C[0], (int) (C[1] - C[2] - 10), 0xFFFFFFFF, 0xFF000000, 1);
@@ -309,6 +322,25 @@ public final class TouchControls {
                 g.fillA(x, cy - hh, 1, hh * 2, running ? 0xFFFFE070 : 0xFFFFFFFF, on ? 255 : 190);
             }
         }
+    }
+
+    private void drawSpecial(Gfx g) {
+        float[] p = btnS();
+        int x = (int) p[0], y = (int) p[1], r = (int) p[2];
+        boolean ready = sFill >= 1f;
+        g.circle(x, y + 2, r, 0xFF000000, 70);
+        g.circle(x, y, r, 0xFF201830, s ? 220 : 150);
+        // energy fill from the bottom
+        int fillTop = y + r - (int) (2 * r * Math.min(1f, sFill));
+        for (int yy = Math.max(fillTop, y - r); yy <= y + r; yy++) {
+            int dy = yy - y;
+            int hw = (int) Math.sqrt(Math.max(0, r * r - dy * dy));
+            g.fillA(x - hw, yy, hw * 2 + 1, 1, ready ? 0xFFFFC830 : 0xFF8A6A20, ready ? 230 : 170);
+        }
+        int ringC = ready ? ((int) (System.nanoTime() / 120_000_000L) % 2 == 0 ? 0xFFFFFFFF : 0xFFFFE070) : 0xFFA0A0B0;
+        g.ring(x, y, r, 2, ringC, ready ? 255 : 140);
+        g.text("\u0006", x - 2, y - 3, 0xFFFFFFFF, 1, ready ? 255 : 150);
+        g.textC(ready ? "SPECIALE!" : "SPECIALE", x, y - r - 10, ready ? 0xFFFFE070 : 0xFFC0C0D0, 0xFF000000, 1);
     }
 
     private void drawBtn(Gfx g, float[] p, String label, int col, boolean pressed) {
