@@ -8,10 +8,10 @@ public final class Save {
         void put(String key, String value);
     }
 
-    public static final int LEVELS = 16;
+    public static final int LEVELS = 34;
     private final Storage st;
     public int unlocked;          // highest playable level index
-    public int cleared;           // bitmask
+    public long cleared;          // bitmask
     public final int[] gems = new int[LEVELS];
     public int lives = 5, totalCoins, hero, lastNode;
     public boolean music = true, sfx = true, seenIntro;
@@ -47,7 +47,7 @@ public final class Save {
     }
 
     public boolean isCleared(int level) {
-        return (cleared & (1 << level)) != 0;
+        return (cleared & (1L << level)) != 0;
     }
 
     public void load() {
@@ -57,7 +57,7 @@ public final class Save {
         try {
             String[] p = s.split(";");
             unlocked = Integer.parseInt(p[1]);
-            cleared = Integer.parseInt(p[2]);
+            cleared = Long.parseLong(p[2]);
             String[] g = p[3].split(",");
             for (int i = 0; i < LEVELS && i < g.length; i++) gems[i] = Integer.parseInt(g[i]);
             lives = Math.max(1, Integer.parseInt(p[4]));

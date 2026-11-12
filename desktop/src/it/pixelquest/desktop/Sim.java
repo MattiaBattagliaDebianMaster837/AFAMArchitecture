@@ -134,7 +134,7 @@ public class Sim {
     /** Simple autoplay: run right, jump at walls/gaps; screenshot periodically. */
     static void play(int idx, int hero) throws Exception {
         g.save.hero = hero;
-        g.save.unlocked = 15;
+        g.save.unlocked = Save.LEVELS - 1;
         Level l = new Level(g, Levels.get(idx), false);
         g.level = l;
         java.lang.reflect.Field f = Game.class.getDeclaredField("screen");
@@ -287,12 +287,13 @@ public class Sim {
     static void fuzz(int frames) throws Exception {
         java.util.Random r = new java.util.Random(1234);
         long total = 0;
-        for (int lv = 0; lv < Levels.count(); lv++) {
+        int from = Integer.getInteger("fuzzFrom", 0);
+        for (int lv = from; lv < Levels.count(); lv++) {
             for (int hero = 0; hero < 5; hero++) {
                 g = new Game(r.nextBoolean() ? 498 : 400, 224, mem());
                 g.save.upgrades[hero] = r.nextInt(3);
                 g.save.hero = hero;
-                g.save.unlocked = 15;
+                g.save.unlocked = Save.LEVELS - 1;
                 g.save.lastNode = lv;
                 // title -> select -> map -> level using real menu flow
                 keys(0, true, false, false); step(3); keys(0, false, false, false); step(30);
@@ -320,7 +321,7 @@ public class Sim {
                     total++;
                     if (g.screen == Game.TITLE && r.nextInt(60) == 0) { keys(0, true, false, false); g.tick(); }
                 }
-                System.out.println("level " + lv + " hero " + hero + " ok, screen=" + g.screen + " lives=" + g.save.lives + " cleared=" + Integer.toBinaryString(g.save.cleared));
+                System.out.println("level " + lv + " hero " + hero + " ok, screen=" + g.screen + " lives=" + g.save.lives + " cleared=" + Long.toBinaryString(g.save.cleared));
             }
         }
         System.out.println("fuzz frames=" + total);
@@ -368,7 +369,7 @@ public class Sim {
     }
 
     static void startLevel(int idx) throws Exception {
-        g.save.unlocked = 15;
+        g.save.unlocked = Save.LEVELS - 1;
         Level l = new Level(g, Levels.get(idx), false);
         g.level = l;
         java.lang.reflect.Field f = Game.class.getDeclaredField("screen");

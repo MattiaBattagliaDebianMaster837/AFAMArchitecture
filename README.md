@@ -1,6 +1,8 @@
 # Pixel Quest – Mattia & Giuseppe
 
-Un platform 2D in **pixel art** per **Android**, con mappa del mondo, 4 mondi, 16 livelli e 4 boss.
+Un platform 2D in **pixel art** per **Android**, con mappa del mondo, **7 mondi, 34 livelli e 10 boss**.
+I primi 4 mondi sono il prologo. Poi comincia il **vero gioco**: 3 mondi all'**Università di Palermo (Unipa)**,
+dove ad aspettarti all'uscita c'è il **Prof. Giovanni Garbo** di Teoria dei Segnali.
 Ci sono 5 personaggi giocabili, disegnati in pixel art a partire dalle loro foto: **Mattia Battaglia**, **Giuseppe Mandanici**,
 **Francesco Inzerillo**, **Andrea Sapienza** e **Paolo Zingales**.
 
@@ -10,6 +12,7 @@ Ci sono 5 personaggi giocabili, disegnati in pixel art a partire dalle loro foto
 |---|---|
 | ![Titolo](docs/screenshots/titolo.png) | ![Scelta del personaggio](docs/screenshots/personaggi.png) |
 | ![Mappa](docs/screenshots/mappa.png) | ![Livello 1-1](docs/screenshots/livello.png) |
+| ![Unipa - Parcheggio](docs/screenshots/unipa.png) | ![Prof. Garbo](docs/screenshots/garbo.png) |
 
 ## Installazione
 1. Copia `release/PixelQuest.apk` sul telefono (o scaricalo da GitHub).
@@ -26,7 +29,7 @@ fatte con `./build.sh` usano la stessa chiave, quindi si installano sopra la ver
 | oppure **Frecce ◀ ▶** (si sceglie nel menu) | Tieni premuto per camminare; dopo un attimo il personaggio corre da solo |
 | **A** | Salta (tieni premuto per saltare più in alto) |
 | **B** | Salto **spin** (distrugge anche i ricci spinosi e i proiettili) |
-| **C** | Abilità del personaggio |
+| **C** | Abilità del personaggio (oppure **calcia il guscio** di tartaruga che stai portando) |
 | **★ SPECIALE** | Mossa speciale, quando la barra dell'energia è piena |
 | ⏸ in alto a destra | Pausa |
 
@@ -88,10 +91,11 @@ Alla fine di ogni livello compare il riepilogo: tempo, danni subiti, cadute, nem
 - **S**: livello finito entro il tempo indicato, senza subire danni e senza cadute.
 - **A / B / C / D**: si perdono punti per il tempo in più, per ogni danno (−12) e per ogni caduta (−20); ogni gemma vale +3.
 
-Il miglior grado di ogni livello appare sulla mappa.
-
 ## Mondi e livelli
-Ogni mondo ha 3 livelli e un castello finale con un boss. Ogni livello normale nasconde **3 gemme** (48 in totale).
+Ogni livello normale nasconde **3 gemme** (72 in totale). Il miglior grado di ogni livello appare sulla mappa.
+
+### Prologo (mondi 1-4)
+Ogni mondo ha 3 livelli e un castello finale con un boss.
 
 | Mondo | Livelli | Boss |
 |---|---|---|
@@ -105,6 +109,35 @@ spiriti di fuoco, cannoni, massi schiaccianti, **golem di pietra** (3 colpi), **
 scattano verso di te. I nemici sono più veloci nei mondi avanzati e i boss hanno più vita. Oggetti: monete (100 = 1 vita), cuori, stella dell'invincibilità,
 pozione vita extra, molle, piattaforme mobili e che cadono, checkpoint.
 
+### Il vero gioco: Unipa (mondi 5-7)
+Dopo aver sconfitto Lord Magmus parte la **storia**: il prologo era solo l'inizio, ora bisogna laurearsi.
+I mondi di Unipa sono strutturati diversamente: **2 livelli, castello del boss intermedio, 2 livelli,
+castello del boss di fine mondo**. Sono molto più difficili del prologo.
+
+| Mondo | Livelli | Boss intermedio | Boss di fine mondo |
+|---|---|---|---|
+| 5 – **Primo anno** (fuori da Unipa, che si avvicina livello dopo livello sullo sfondo) | Parcheggio, Viale delle Scienze, La Scalinata (verticale), Il Cortile | **Martino** (Ingresso di Unipa): *libri in testa*, scatti, *pioggia di libri* | **Angela Valenti** (Atrio di Unipa): ventagli di gessetti, *interrogazione* (pioggia di punti interrogativi), teletrasporto e fogli d'esame volanti |
+| 6 – **Secondo anno** (dentro le aule) | Aula Magna, Laboratorio di Fisica, La Biblioteca (verticale), Sala Server | **Principato**, il vecchio professore di fisica scorbutico (Aula di Fisica): *vettori*, *pendolo semplice*, *gravità raddoppiata* con mele che cadono, schianti | **Lily, il blob degli algoritmi** (Aula di Informatica): *ricerca binaria*, *ordinamento* (colonne che spuntano dal pavimento), *ciclo infinito*, *ricorsione* (si divide in gelatine) |
+| 7 – **Ultimo anno** (la fuga da Unipa, di notte) | Corridoi di Notte, Segreteria, I Tetti di Unipa, **La Grande Fuga** (lo schermo scorre da solo!) | **Luca Cruciata** (Terrazza di Unipa): *scatti*, *frisbee* a boomerang, onde del *megafono* | **Prof. Giovanni Garbo** (L'Uscita di Unipa): *segnali aleatori*, *sinusoidi*, *impulsi di Dirac*, *onda quadra*, fantasmi della *trasformata di Fourier*, teletrasporto |
+
+Battendo Garbo si esce da Unipa... **con la laurea**, con tanto di tocco in testa nel finale.
+
+**Tartarughe e gusci**: salta su una tartaruga e si ritira nel guscio. Toccalo camminando per **raccoglierlo**,
+poi premi **C** per **calciarlo**: scivola veloce, rimbalza contro i muri, rompe i mattoni e travolge nemici e
+proiettili (3 danni anche ai boss). Attento: dopo il primo rimbalzo il guscio fa male anche a te (saltaci sopra per
+fermarlo). Se lo porti addosso contro un nemico lo colpisci; se ti colpiscono lo perdi. Lasciato fermo per 8 secondi,
+la tartaruga torna fuori.
+
+Nuovi nemici: **fogli d'esame** volanti che scendono a onde, **libri** che mordono (2 colpi), **distributori
+automatici** (4 colpi) che sparano lattine rimbalzanti, **droni** di sicurezza che sganciano bombe,
+**laser** dal soffitto (lampeggiano prima di sparare) e **atomi** con elettroni che ruotano.
+Nuovi blocchi: **nastri trasportatori**, **blocchi A/B** che appaiono e scompaiono a tempo (ti spingono fuori se ti
+trovi dentro) e i **blocchi U** di Unipa.
+
+| Secondo anno | Lily |
+|---|---|
+| ![Aula Magna](docs/screenshots/aula.png) | ![Lily](docs/screenshots/lily.png) |
+
 ![Boss](docs/screenshots/boss.png)
 
 | Mosse speciali | Negozio |
@@ -116,6 +149,7 @@ pozione vita extra, molle, piattaforme mobili e che cadono, checkpoint.
 app/AndroidManifest.xml
 app/src/it/pixelquest/core/   motore di gioco in Java puro (nessuna dipendenza Android)
     Game, WorldMap, Level, Player, Ents (nemici/oggetti), Bosses, Hero, HeroArt (pixel art dei personaggi),
+    Uni/UniBosses/UniArt (nemici, gusci, boss e grafica dei mondi di Unipa),
     Art/Theme (grafica procedurale), Gfx/Font (renderer software), Audio/Sfx/Music (sintetizzatore chiptune)
 app/src/it/pixelquest/game/   parte Android: MainActivity, GameView (SurfaceView, touch, AudioTrack)
 levels/levels.txt             i livelli in formato testo (convertiti in Levels.java da tools/genlevels.py)
@@ -145,4 +179,5 @@ java -cp /tmp/pq it.pixelquest.desktop.Sim /tmp/shots fuzz 4000
 java -cp /tmp/pq it.pixelquest.desktop.Sim /tmp/shots controls  # test di reattività dei comandi touch
 ```
 Il bot esplora ogni livello con la vera fisica del gioco (corse, salti, wall jump, tripli salti, piattaforme)
-e conferma che tutti i 16 livelli sono completabili con entrambi i personaggi.
+sui 16 livelli del prologo. I 18 livelli di Unipa vengono validati dal generatore e dal fuzzing, ma non sono ancora
+stati provati a mano.

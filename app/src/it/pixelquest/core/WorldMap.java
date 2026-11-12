@@ -2,12 +2,27 @@ package it.pixelquest.core;
 
 /** The overworld map: 4 worlds, 16 level nodes connected by a path. */
 public final class WorldMap {
-    static final int MW = 1220, MH = 224;
+    static final int MW = 2340, MH = 224, UNI_X = 1220, UNI_W = 370;
     static final int[][] NODES = {
             {40, 150}, {100, 104}, {165, 146}, {238, 98},
             {335, 140}, {398, 172}, {462, 124}, {540, 96},
             {636, 150}, {696, 110}, {758, 154}, {838, 100},
-            {936, 146}, {998, 104}, {1066, 150}, {1150, 96}};
+            {936, 146}, {998, 104}, {1066, 150}, {1150, 96},
+            // the real game: University of Palermo
+            {1262, 152}, {1314, 108}, {1372, 140}, {1428, 100}, {1488, 150}, {1556, 96},
+            {1632, 150}, {1688, 106}, {1748, 146}, {1806, 100}, {1866, 152}, {1930, 98},
+            {2004, 148}, {2060, 104}, {2120, 150}, {2178, 100}, {2238, 148}, {2300, 96}};
+
+    static int totalGems() {
+        int n = 0;
+        for (int i = 0; i < NODES.length; i++) if (!Levels.get(i).boss) n += 3;
+        return n;
+    }
+
+    static int regionOf(float bx) {
+        if (bx < UNI_X) return Math.max(0, Math.min(3, (int) (bx / 300)));
+        return Math.min(6, 4 + (int) ((bx - UNI_X) / UNI_W));
+    }
 
     private final Game game;
     private Sprite bg;
@@ -46,7 +61,7 @@ public final class WorldMap {
                 game.openMapMenu();
                 return;
             }
-            if (in.rightP && cur < game.save.unlocked && cur < 15) target = cur + 1;
+            if (in.rightP && cur < game.save.unlocked && cur < NODES.length - 1) target = cur + 1;
             if (in.leftP && cur > 0) target = cur - 1;
             if (in.aP) {
                 game.playLevel(cur);
@@ -118,7 +133,7 @@ public final class WorldMap {
         // nodes
         for (int i = 0; i < NODES.length; i++) {
             int x = NODES[i][0] - c, y = NODES[i][1];
-            boolean boss = i % 4 == 3, done = s.isCleared(i), open = i <= s.unlocked;
+            boolean boss = Levels.get(i).boss, done = s.isCleared(i), open = i <= s.unlocked;
             Sprite sp = boss ? (done ? Art.castleDone : Art.castle) : (done ? Art.nodeDone : Art.node);
             g.blit(sp, x - sp.w / 2, y - sp.h / 2 + (boss ? -4 : 0), false, open ? 255 : 120, 0);
             if (!open) g.blit(Art.lock, x - 3, y - 4);
@@ -131,6 +146,8 @@ public final class WorldMap {
             if (open && !boss)
                 for (int k = 0; k < 3; k++) g.fill(x - 5 + k * 4, y + 6, 3, 3, (gm & (1 << k)) != 0 ? 0xFF6AC8FF : 0xFF2A2A3A);
         }
+        if (UNI_X - c > -260 && UNI_X - c < game.W)
+            g.textO("IL VERO GIOCO: UNIPA", UNI_X - c + 10, 40, 0xFFFFE070, 0xFF5A1A2A, 1);
         // hero icon
         Sprite icon = game.hero().icon;
         int bob = moveFrom < 0 ? (int) Math.round(Math.sin(t * 0.12) * 2) : 0;
@@ -153,7 +170,7 @@ public final class WorldMap {
         g.blit(Art.hudCoin, rx + 40, 3);
         g.textO("" + s.totalCoins, rx + 53, 7, 0xFFFFE070, 0xFF000000, 1);
         g.blit(Art.hudGem, rx + 78, 2);
-        g.textO(s.totalGems() + "/48", rx + 92, 7, 0xFF8AD0FF, 0xFF000000, 1);
+        g.textO(s.totalGems() + "/" + totalGems(), rx + 92, 7, 0xFF8AD0FF, 0xFF000000, 1);
         g.textO(game.hero().name, rx - 30 + 10, 21, 0xFFC0C0E0, 0xFF000000, 1);
 
         // controls
@@ -172,12 +189,15 @@ public final class WorldMap {
                 {0xFF58B048, 0xFF4A9A3E, 0xFF6CC45A},
                 {0xFFE8C078, 0xFFD8AA62, 0xFFF4D494},
                 {0xFFE4EEF8, 0xFFC4D6EA, 0xFFFFFFFF},
-                {0xFF4A3442, 0xFF3A2834, 0xFF5A4252}};
+                {0xFF4A3442, 0xFF3A2834, 0xFF5A4252},
+                {0xFFD4CCB8, 0xFFBEB6A2, 0xFF7AB86A},
+                {0xFFE2D6BA, 0xFFC8BC9E, 0xFFF0E6CC},
+                {0xFF2A2A46, 0xFF20203A, 0xFF34345A}};
         for (int y = 0; y < MH; y++)
             for (int x = 0; x < MW; x++) {
                 // wavy region borders
                 float bx = x + (float) Math.sin(y * 0.07) * 10;
-                int r = Math.max(0, Math.min(3, (int) (bx / 300)));
+                int r = regionOf(bx);
                 int[] c = cols[r];
                 float n = Theme.rnd(x / 3, y / 3, 99 + r);
                 int col = n < 0.18f ? c[1] : n > 0.9f ? c[2] : c[0];
@@ -190,6 +210,13 @@ public final class WorldMap {
             for (int y = 0; y < top; y++) s.set(x, y, y > top - 3 ? 0xFF8AD0F0 : ((x + y * 3) % 23 == 0 ? 0xFF6ABEEA : 0xFF3A8AD0));
             for (int y = bot; y < MH; y++) s.set(x, y, y < bot + 2 ? 0xFF8AD0F0 : ((x * 2 + y) % 19 == 0 ? 0xFF6ABEEA : 0xFF3A8AD0));
         }
+        // the University of Palermo: tiled floor grid inside, the building itself as a landmark
+        for (int y = 30; y < MH - 16; y++)
+            for (int x = UNI_X + UNI_W; x < UNI_X + 2 * UNI_W; x++)
+                if (x % 12 == 0 || y % 12 == 0) s.set(x, y, 0xFFCFC2A4);
+        Sprite b = Theme.get(4).building, bn = Theme.get(6).buildingNight;
+        stampScaled(s, b, UNI_X + UNI_W - 52, 30, 0.6f);
+        stampScaled(s, bn, UNI_X + 2 * UNI_W + 120, 30, 0.6f);
         // lava rivers in world 4
         for (int y = 30; y < MH - 16; y++) {
             int rx = 1010 + (int) (Math.sin(y * 0.06) * 30);
@@ -206,8 +233,7 @@ public final class WorldMap {
                 if (d < 12) nearPath = true;
             }
             if (nearPath) continue;
-            int r = x / 300;
-            drawDeco(s, x, y, Math.min(3, r), rnd.nextInt(3));
+            drawDeco(s, x, y, regionOf(x), rnd.nextInt(3));
         }
         return s;
     }
@@ -219,8 +245,38 @@ public final class WorldMap {
         return (float) Math.sqrt(qx * qx + qy * qy);
     }
 
+    private static void stampScaled(Sprite dst, Sprite src, int ox, int oy, float k) {
+        int w = (int) (src.w * k), h = (int) (src.h * k);
+        for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++) {
+                int c = src.get((int) (x / k), (int) (y / k));
+                if ((c >>> 24) != 0) dst.set(ox + x, oy + y, c);
+            }
+    }
+
     private void drawDeco(Sprite s, int x, int y, int region, int v) {
         switch (region) {
+            case 4: // campus: palms and benches
+                if (v < 2) {
+                    for (int yy = -8; yy <= 0; yy++) s.set(x, y + yy, 0xFF8A6A3A);
+                    for (int a = 0; a < 5; a++)
+                        for (int d = 0; d < 5; d++) s.set(x + (int) (Math.cos(a * 1.25) * d), y - 9 + (int) (Math.sin(a * 1.25) * d * 0.5 + d * 0.3), 0xFF2E8A3A);
+                } else for (int xx = -3; xx <= 3; xx++) { s.set(x + xx, y, 0xFF8A5A30); s.set(x + xx, y - 2, 0xFF8A5A30); }
+                return;
+            case 5: // inside: desks and books
+                for (int xx = -4; xx <= 4; xx++) s.set(x + xx, y, 0xFFA87A48);
+                s.set(x - 3, y + 1, 0xFF5A5A66);
+                s.set(x + 3, y + 1, 0xFF5A5A66);
+                if (v == 0) { s.set(x - 1, y - 1, 0xFFC03A3A); s.set(x, y - 1, 0xFF3A6AC0); }
+                return;
+            case 6: // night: lamp posts and dark trees
+                if (v == 0) {
+                    for (int yy = -9; yy <= 0; yy++) s.set(x, y + yy, 0xFF5A5A6A);
+                    s.set(x - 1, y - 10, 0xFFFFE070);
+                    s.set(x, y - 10, 0xFFFFE070);
+                    s.set(x + 1, y - 10, 0xFFFFE070);
+                } else for (int yy = -6; yy <= 0; yy++) for (int xx = -(6 + yy) / 2; xx <= (6 + yy) / 2; xx++) s.set(x + xx, y + yy, 0xFF14142A);
+                return;
             case 0:
                 if (v < 2) { // tree
                     for (int yy = -9; yy <= 0; yy++)

@@ -37,6 +37,8 @@ public final class Player extends Entity {
     float ballSpeed;
     int ballBounces;
     boolean bigBat;
+    /** turtle shell being carried (kicked with C) */
+    public Uni.Shell carrying;
     // special
     public float energy;
     public int specialT;
@@ -186,7 +188,7 @@ public final class Player extends Entity {
             jumpHoldMin--;
             hold = true;
         }
-        float g = (vy < 0 && hold) ? GRAV_HOLD : GRAV;
+        float g = ((vy < 0 && hold) ? GRAV_HOLD : GRAV) * L.gravMul;
         vy = Math.min(vy + g, MAX_FALL);
         if (wallSliding && vy > 1.3f) vy = 1.3f;
 
@@ -216,6 +218,9 @@ public final class Player extends Entity {
             }
         }
         if (onGround && !wasOnGround) land();
+        // conveyor belts carry the hero
+        if (onGround && riding == null && (L.groundTile == Level.CONV_L || L.groundTile == Level.CONV_R))
+            L.moveX(this, L.groundTile == Level.CONV_L ? -1.2f : 1.2f);
         if (x < 0) {
             x = 0;
             vx = 0;
@@ -289,6 +294,11 @@ public final class Player extends Entity {
     }
 
     private void useAbility() {
+        if (carrying != null) {
+            carrying.kick(this);
+            actT = 12;
+            return;
+        }
         switch (hero.ability_) {
             case Hero.PUNCH:
                 if (cd > 0) return;
@@ -556,6 +566,10 @@ public final class Player extends Entity {
         if (!overlaps(e)) return;
         Ents.Enemy en = e instanceof Ents.Enemy ? (Ents.Enemy) e : null;
         boolean fromAbove = vy > 0 && prevBottom <= e.y + Math.max(6, e.vy + 5);
+        if (e instanceof Uni.Shell) {
+            ((Uni.Shell) e).touch(this, fromAbove);
+            return;
+        }
         if (en != null && en.frozen > 0) {
             // frozen enemies are harmless blocks of ice: stomping or spinning shatters them
             if (fromAbove) {
@@ -606,6 +620,7 @@ public final class Player extends Entity {
         if (dying || invuln > 0 || starT > 0) return;
         if (L.state != Level.PLAY) return;
         L.game.attemptHits++;
+        carrying = null;
         if (power != Combat.NONE) {
             // the flower power absorbs the hit
             power = Combat.NONE;
@@ -632,6 +647,7 @@ public final class Player extends Entity {
         dying = true;
         hp = 0;
         power = Combat.NONE;
+        carrying = null;
         vy = -6.5f;
         deathT = 0;
         L.playerDied();

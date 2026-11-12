@@ -2,7 +2,7 @@ package it.pixelquest.core;
 
 /** Top-level game: screens, flow between them and persistence. Platform independent. */
 public final class Game {
-    public static final int TITLE = 0, SELECT = 1, MAP = 2, PLAY = 3, PAUSE = 4, GAMEOVER = 5, ENDING = 6, MENU = 7, SHOP = 8;
+    public static final int TITLE = 0, SELECT = 1, MAP = 2, PLAY = 3, PAUSE = 4, GAMEOVER = 5, ENDING = 6, MENU = 7, SHOP = 8, STORY = 9;
 
     public int W, H;
     public Gfx gfx;
@@ -35,6 +35,7 @@ public final class Game {
     public Game(int w, int h, Save.Storage storage) {
         Hero.init();
         Art.init();
+        UniArt.init();
         audio = new Audio();
         save = new Save(storage);
         audio.musicOn = save.music;
@@ -100,6 +101,10 @@ public final class Game {
                 shopHero = save.hero;
                 shopRow = 0;
                 break;
+            case STORY:
+                storyPage = 0;
+                audio.music(Music.W5);
+                break;
             case MAP:
                 level = null;
                 map.enter();
@@ -156,7 +161,7 @@ public final class Game {
         if (l.grade > save.grades[idx]) save.grades[idx] = l.grade;
         carryPower = l.player.power;
         carryEnergy = l.player.energy;
-        save.cleared |= 1 << idx;
+        save.cleared |= 1L << idx;
         save.gems[idx] |= l.gems;
         boolean first = save.unlocked <= idx;
         if (save.unlocked < idx + 1 && idx + 1 < Save.LEVELS) save.unlocked = idx + 1;
@@ -164,6 +169,11 @@ public final class Game {
         save.store();
         if (idx == Save.LEVELS - 1) {
             go(ENDING, 0);
+            return;
+        }
+        if (idx == LevelDef.PROLOGUE_LEVELS - 1 && first) {
+            map.pendingAdvance = true;
+            go(STORY, 0);
             return;
         }
         map.pendingAdvance = first;
@@ -219,6 +229,13 @@ public final class Game {
             case PAUSE: updatePause(); break;
             case MENU: updatePause(); break;
             case SHOP: updateShop(); break;
+            case STORY:
+                if (screenT > 40 && (input.aP || input.bP || !touch.taps.isEmpty() || input.backP)) {
+                    screenT = 0;
+                    Sfx.play(Sfx.SELECT);
+                    if (++storyPage >= STORY_PAGES.length) go(MAP, 0);
+                }
+                break;
             case GAMEOVER:
                 if (screenT > 90 && (input.aP || !touch.taps.isEmpty() || input.backP)) go(MAP, 0);
                 break;
@@ -423,6 +440,7 @@ public final class Game {
             case PAUSE: renderPause(g); break;
             case MENU: renderPause(g); break;
             case SHOP: renderShop(g); break;
+            case STORY: renderStory(g); break;
             case GAMEOVER: renderGameOver(g); break;
             case ENDING: renderEnding(g); break;
         }
@@ -434,7 +452,7 @@ public final class Game {
         level.renderHud(g);
         if (controls && level.state == Level.PLAY) {
             touch.visible = true;
-            touch.draw(g, hero().cLabel(), true, true);
+            touch.draw(g, level.player.carrying != null ? "CALCIA" : hero().cLabel(), true, true);
         }
     }
 
@@ -490,7 +508,7 @@ public final class Game {
         // slime chasing for fun
         g.blit(Art.slime[0][(frame / 12) % 2].scaled(2), W / 2 + 70, gy - 22);
         if ((frame / 30) % 2 == 0) g.textC("TOCCA PER INIZIARE", W / 2, H - 14, 0xFFFFFFFF, 0xFF000000, 1);
-        g.text("V1.2", W - 28, H - 10, 0xFFFFFFFF, 1, 160);
+        g.text("V1.3", W - 28, H - 10, 0xFFFFFFFF, 1, 160);
     }
 
     private void renderSelect(Gfx g) {
@@ -675,21 +693,50 @@ public final class Game {
         if (screenT > 90 && (frame / 25) % 2 == 0) g.textC("TOCCA PER RIPROVARE", W / 2, H - 22, 0xFFFFFFFF, 0xFF000000, 1);
     }
 
+    private int storyPage;
+    private static final String[][] STORY_PAGES = {
+            {"HAI SCONFITTO LORD MAGMUS!", "", "MA ERA SOLO IL PROLOGO..."},
+            {"ORA INIZIA IL VERO GIOCO:", "L'UNIVERSIT\u00c0 DI PALERMO.", "", "PRIMO ANNO, SECONDO ANNO, ULTIMO ANNO."},
+            {"IL PERFIDO PROF. GIOVANNI GARBO", "HA BLOCCATO L'USCITA DI UNIPA", "CON I SUOI SEGNALI ALEATORI."},
+            {"ENTRA, SUPERA GLI ESAMI...", "E SCAPPA DA UNIPA!", "", "IN BOCCA AL LUPO!"}};
+
+    private void renderStory(Gfx g) {
+        Theme th = Theme.get(storyPage < 2 ? 4 : 6);
+        th.stage = storyPage < 2 ? 1 + storyPage * 2 : 4;
+        th.drawBackground(g, frame * 0.4f, 0, H, frame);
+        g.dim(0xFF000000, 120);
+        String[] lines = STORY_PAGES[Math.min(storyPage, STORY_PAGES.length - 1)];
+        int y0 = H / 2 - lines.length * 9;
+        for (int i = 0; i < lines.length; i++) g.textC(lines[i], W / 2, y0 + i * 18, i == 0 ? 0xFFFFE070 : 0xFFFFFFFF, 0xFF000000, i == 0 ? 2 : 1);
+        if (storyPage >= 2) {
+            Sprite gb = UniArt.garbo[(frame / 30) % 2];
+            g.blit(gb, W - 70, H - 80, false);
+        }
+        if (screenT > 40 && (frame / 25) % 2 == 0) g.textC("TOCCA PER CONTINUARE", W / 2, H - 14, 0xFFC0C0D8, 0xFF000000, 1);
+    }
+
     private void renderEnding(Gfx g) {
-        Theme th = Theme.get(0);
+        Theme th = Theme.get(4);
+        th.stage = 0;
         th.drawBackground(g, frame * 0.3f, 0, H, frame);
         g.dim(0xFF000000, 90);
-        g.textC("CONGRATULAZIONI!", W / 2, 14, 0xFFFFD040, 0xFF3A1A08, 3);
-        for (int i = 0; i < 2; i++) {
-            Sprite s = Hero.ALL[i].frames[(frame / 20 + i) % 2 == 0 ? HeroArt.VICTORY : HeroArt.FRONT].scaled(3);
-            g.blit(s, W / 2 - 80 + i * 100, 50);
+        g.textC("CONGRATULAZIONI, DOTTORE!", W / 2, 10, 0xFFFFD040, 0xFF3A1A08, 2);
+        int n = Hero.ALL.length;
+        for (int i = 0; i < n; i++) {
+            Sprite s = Hero.ALL[i].frames[(frame / 20 + i) % 2 == 0 ? HeroArt.VICTORY : HeroArt.FRONT].scaled(2);
+            int hx = W / 2 - n * 30 + i * 60 + 6, hy = 40 + (int) Math.abs(Math.sin((frame + i * 20) * 0.08) * 6);
+            g.blit(s, hx, hy);
+            // graduation cap
+            g.fill(hx + 4, hy - 4, 32, 4, 0xFF1A1A22);
+            g.fill(hx + 12, hy - 1, 16, 4, 0xFF1A1A22);
+            g.fill(hx + 34, hy - 2, 2, 8, 0xFFE03A3A);
         }
-        String[] lines = {"LORD MAGMUS È STATO SCONFITTO", "E IL REGNO DEI PIXEL È SALVO!", "",
-                "GEMME TROVATE: " + save.totalGems() + "/48", "GRAZIE PER AVER GIOCATO!"};
-        for (int i = 0; i < lines.length; i++) g.textC(lines[i], W / 2, 140 + i * 13, 0xFFFFFFFF, 0xFF000000, 1);
-        for (int k = 0; k < 6; k++) {
+        String[] lines = {"HAI SCONFITTO IL PROF. GIOVANNI GARBO", "E SEI USCITO DA UNIPA... CON LA LAUREA!", "",
+                "GEMME TROVATE: " + save.totalGems() + "/" + WorldMap.totalGems(), "GRAZIE PER AVER GIOCATO!"};
+        for (int i = 0; i < lines.length; i++) g.textC(lines[i], W / 2, 120 + i * 13, 0xFFFFFFFF, 0xFF000000, 1);
+        for (int k = 0; k < 10; k++) { // confetti
             int sx = (int) ((k * 83 + frame * (1 + k % 3)) % W), sy = (int) ((k * 47 + frame * 2) % H);
-            g.blit(Art.sparkle[(frame / 6 + k) % 2], sx, sy);
+            g.fill(sx, sy, 3, 3, (new int[]{0xFFFF4A4A, 0xFF4AFF6A, 0xFF4A8AFF, 0xFFFFE04A})[k % 4]);
         }
         if (screenT > 240 && (frame / 25) % 2 == 0) g.textC("TOCCA PER TORNARE ALLA MAPPA", W / 2, H - 12, 0xFFFFE070, 0xFF000000, 1);
     }

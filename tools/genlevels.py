@@ -15,7 +15,7 @@ import re
 SRC = sys.argv[1] if len(sys.argv) > 1 else "levels/levels.txt"
 OUT = sys.argv[2] if len(sys.argv) > 2 else "app/src/it/pixelquest/core/Levels.java"
 
-VALID = set(" .#=Bb?MhLI*-^~%okPCGgsrvfpxXTmwnFKieuYZzql")
+VALID = set(" .#=Bb?MhLI*-^~%okPCGgsrvfpxXTmwnFKieuYZzql<>AVUtajcdyO")
 
 
 def parse(path):
@@ -36,6 +36,9 @@ def parse(path):
             continue
         if line.startswith("@hint"):
             cur["hints"].append(line[5:].strip())
+            continue
+        if line.startswith("@autoscroll"):
+            cur["autoscroll"] = float(line.split()[1])
             continue
         if line.strip() == "+" or line.startswith("@end"):
             if chunk:
@@ -89,10 +92,10 @@ def check(lv, rows):
     # walkers must have something under them (within 4 tiles)
     for r, row in enumerate(rows):
         for c, ch in enumerate(row):
-            if ch in "srfpTCGiPzql":
+            if ch in "srfpTCGiPzqltjc":
                 ok = False
                 for rr in range(r + 1, min(len(rows), r + 5)):
-                    if rows[rr][c] in "#=BbMhL?*I-^kYZ":
+                    if rows[rr][c] in "#=BbMhL?*I-^kYZ<>AVU":
                         ok = True
                         break
                 if not ok:
@@ -153,6 +156,8 @@ def main():
         out.append("        });")
         if lv["hints"]:
             out.append("        d.hints = new String[]{" + ", ".join(jstr(h) for h in lv["hints"]) + "};")
+        if lv.get("autoscroll"):
+            out.append("        d.autoscroll = %sf;" % lv["autoscroll"])
         out.append("        return d;")
         out.append("    }\n")
     out.append("}")

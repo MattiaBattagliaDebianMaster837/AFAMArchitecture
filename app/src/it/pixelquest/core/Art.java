@@ -7,8 +7,8 @@ public final class Art {
     public static final int OUT = 0xFF1A1018;
 
     // enemies [world][frame]
-    public static Sprite[][] slime = new Sprite[4][];
-    public static Sprite[][] hedgehog = new Sprite[4][];
+    public static Sprite[][] slime = new Sprite[7][];
+    public static Sprite[][] hedgehog = new Sprite[7][];
     public static Sprite[] bat, frog, penguin, fire, cannon, crusher;
     public static Sprite cannonBall, sandBall, snowBall, icicle, bulletP, rock;
     public static Sprite[] fireball;
@@ -42,15 +42,21 @@ public final class Art {
             {0xFF5BC24A, 0xFF2E8A34, 0xFFB8F08A},
             {0xFFE9973A, 0xFFB3611E, 0xFFFFD08A},
             {0xFF6FC6F2, 0xFF3683C2, 0xFFD6F4FF},
-            {0xFFB5345A, 0xFF74193A, 0xFFF07A9A}};
+            {0xFFB5345A, 0xFF74193A, 0xFFF07A9A},
+            {0xFF4AB0A8, 0xFF2A7A72, 0xFFA0F0E8},
+            {0xFF9A6AD8, 0xFF6A3AA8, 0xFFD8B8FF},
+            {0xFFE84A4A, 0xFF9A1A2A, 0xFFFF9A8A}};
     static final int[][] HOG_COL = {
             {0xFF6E5038, 0xFFDDB98C, 0xFF4A3424},
             {0xFF9C6B2E, 0xFFF0D29A, 0xFF6A4518},
             {0xFFD8E6F0, 0xFFA8C8E0, 0xFF7C98B4},
-            {0xFF3A2E3E, 0xFFE07A4A, 0xFF241A28}};
+            {0xFF3A2E3E, 0xFFE07A4A, 0xFF241A28},
+            {0xFF5A5A66, 0xFFD8B898, 0xFF3A3A44},
+            {0xFF4A3A2A, 0xFFE8C8A0, 0xFF2A1A12},
+            {0xFF2A2A34, 0xFFC86A4A, 0xFF16161C}};
 
     public static void init() {
-        for (int w = 0; w < 4; w++) {
+        for (int w = 0; w < SLIME_COL.length; w++) {
             int[] c = SLIME_COL[w];
             Object[] p = {'G', c[0], 'g', c[1], 'L', c[2], 'W', 0xFFFFFFFF, 'P', 0xFF1A1018};
             slime[w] = new Sprite[]{spr(new String[]{

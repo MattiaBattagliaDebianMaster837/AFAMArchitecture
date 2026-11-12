@@ -7,7 +7,8 @@ public final class Level {
     public static final int T = 16;
     // tiles
     public static final byte EMPTY = 0, GROUND = 1, STONE = 2, BRICK = 3, QBLOCK = 4, USED = 5, SEMI = 6, SPIKE = 7,
-            LAVA = 8, LAVA_BODY = 9, COIN = 10, ICE = 11, CANNON = 12, GATE = 13;
+            LAVA = 8, LAVA_BODY = 9, COIN = 10, ICE = 11, CANNON = 12, GATE = 13, CONV_L = 14, CONV_R = 15,
+            TIMED_A = 16, TIMED_B = 17, UBLOCK = 18;
     // q-block contents
     public static final byte C_COIN = 1, C_MULTI = 2, C_HEART = 3, C_STAR = 4, C_LIFE = 5, C_FIRE = 6, C_ICE = 7;
 
@@ -82,6 +83,18 @@ public final class Level {
                     case 'Y': tiles[i] = QBLOCK; data[i] = C_FIRE; break;
                     case 'Z': tiles[i] = QBLOCK; data[i] = C_ICE; break;
                     case 'z': add(new Ents.Golem(ex + 1, ey)); break;
+                    case '<': tiles[i] = CONV_L; break;
+                    case '>': tiles[i] = CONV_R; break;
+                    case 'A': tiles[i] = TIMED_A; break;
+                    case 'V': tiles[i] = TIMED_B; break;
+                    case 'U': tiles[i] = UBLOCK; break;
+                    case 't': add(new Uni.Turtle(ex, ey)); break;
+                    case 'a': add(new Uni.Paper(ex, ey)); break;
+                    case 'j': add(new Uni.Book(ex, ey)); break;
+                    case 'c': add(new Uni.Vending(ex, ey)); break;
+                    case 'd': add(new Uni.Drone(ex, ey)); break;
+                    case 'y': add(new Uni.Laser(ex, ey)); break;
+                    case 'O': add(new Uni.Atom(ex, ey)); break;
                     case 'q': add(new Ents.Cactus(ex, ey)); break;
                     case 'l': add(new Ents.Lizard(ex, ey)); break;
                     case '-': tiles[i] = SEMI; break;
@@ -131,7 +144,7 @@ public final class Level {
         if (def.boss) {
             // boss spawns at arena centre; arena starts at column marked K
             float bx = (arenaCol + 20) * T;
-            bossEnt = Bosses.create(def.world, bx, (floorRow - 1) * T);
+            bossEnt = Bosses.create(def.bossId, bx, (floorRow - 1) * T);
             add(bossEnt);
         }
         flushAdds();
@@ -144,6 +157,7 @@ public final class Level {
         player = new Player(this, game.hero(), spawnX, spawnY);
         camX = Math.max(0, Math.min(tw * T - game.W, player.cx() - game.W / 2f));
         if (tw * T < game.W) camX = (tw * T - game.W) / 2f;
+        if (def.autoscroll > 0) camX = Math.max(0, Math.min(tw * T - game.W, player.x - 40));
         camY = Math.max(0, Math.min(th * T - game.H, player.y - game.H * 0.55f));
         banner = def.code + "  " + def.name;
         bannerT = 150;
@@ -168,7 +182,42 @@ public final class Level {
         if (c < 0 || c >= tw) return STONE; // side walls
         if (r < 0) return EMPTY;
         if (r >= th) return EMPTY;
-        return tiles[r * tw + c];
+        byte t = tiles[r * tw + c];
+        if (t == TIMED_A && !phaseA) return EMPTY;
+        if (t == TIMED_B && phaseA) return EMPTY;
+        return t;
+    }
+
+    /** Timed blocks: 'A' blocks are solid in phase A, 'B' blocks in the other phase. */
+    public boolean phaseA = true;
+    public static final int PHASE = 150;
+    /** gravity multiplier (a physics professor can double it) */
+    public float gravMul = 1f;
+
+    private void updatePhase() {
+        boolean pa = (frame / PHASE) % 2 == 0;
+        if (pa == phaseA) return;
+        phaseA = pa;
+        Sfx.play(Sfx.SELECT);
+        // a block appearing inside the hero pushes him up on top of it
+        if (player != null && !player.dying) {
+            int l = (int) Math.floor(player.x / T), r = (int) Math.floor((player.right() - 0.01f) / T);
+            int tp = (int) Math.floor(player.y / T), bt = (int) Math.floor((player.bottom() - 0.01f) / T);
+            for (int rr = tp; rr <= bt; rr++)
+                for (int cc = l; cc <= r; cc++)
+                    if (solid(tile(cc, rr))) {
+                        if (solid(tile(cc, rr - 1)) || solid(tile(cc, rr + 1)) && rr < bt) {
+                            // a timed door closing on the hero: push him out sideways
+                            float mid = cc * T + T / 2f;
+                            if (player.cx() < mid && !solid(tile(cc - 1, rr))) player.x = cc * T - player.w - 0.5f;
+                            else player.x = (cc + 1) * T + 0.5f;
+                        } else {
+                            player.y = rr * T - player.h;
+                            player.vy = Math.min(player.vy, 0);
+                        }
+                        return;
+                    }
+        }
     }
 
     public void setTile(int c, int r, byte t) {
@@ -178,7 +227,8 @@ public final class Level {
     }
 
     public static boolean solid(byte t) {
-        return t == GROUND || t == STONE || t == BRICK || t == QBLOCK || t == USED || t == SPIKE || t == ICE || t == CANNON || t == GATE;
+        return t == GROUND || t == STONE || t == BRICK || t == QBLOCK || t == USED || t == SPIKE || t == ICE || t == CANNON || t == GATE
+                || t == CONV_L || t == CONV_R || t == TIMED_A || t == TIMED_B || t == UBLOCK;
     }
 
     public boolean solidAt(float px, float py) {
@@ -202,7 +252,7 @@ public final class Level {
         if (c < 0 || c >= tw || r >= th) return outsideSolid;
         if (r < 0) return false;
         byte t = tiles[r * tw + c];
-        return t == GROUND || t == STONE || t == ICE;
+        return t == GROUND || t == STONE || t == ICE || t == UBLOCK;
     }
 
     private void computeVariant(int c, int r) {
@@ -407,6 +457,7 @@ public final class Level {
 
         Input pin = (state == PLAY) ? in : noInput;
         input = pin;
+        updatePhase();
         // platforms first so riders follow them
         for (Entity e : ents) if (e.platform && !e.dead && active(e)) {
             float ox = e.x, oy = e.y;
@@ -417,6 +468,15 @@ public final class Level {
         }
         if (state == CLEAR || state == BOSSWIN) player.autoWalk = true;
         player.update(pin);
+        if (def.autoscroll > 0 && state == PLAY && !player.dying) {
+            // auto-scrolling level: the left edge of the screen pushes the hero; squeezed against a wall = out
+            float left = camX + 2;
+            if (player.x < left) {
+                player.x = left;
+                if (solidAt(player.right() + 0.5f, player.cy())) player.die();
+            }
+            if (player.right() > camX + game.W - 4) player.x = camX + game.W - 4 - player.w;
+        }
         // arena lock
         if (arenaCol >= 0 && !arenaLocked && player.x > (arenaCol + 1) * T) lockArena();
 
@@ -479,7 +539,7 @@ public final class Level {
         for (int r = 0; r < th; r++) if (!solid(tile(arenaCol, r))) setTile(arenaCol, r, GATE);
         shake = 12;
         Sfx.play(Sfx.GATE);
-        game.audio.music(Music.BOSS);
+        game.audio.music(def.bossId == 9 ? Music.FINAL : Music.BOSS);
         if (bossEnt != null) bossEnt.wake();
         banner = bossEnt != null ? bossEnt.name : "BOSS";
         bannerT = 150;
@@ -491,7 +551,9 @@ public final class Level {
         if (arenaLocked) minX = Math.min(maxX, arenaCol * T);
         float targetX = player.cx() - W / 2f + player.facing * 28;
         if (state != PLAY) targetX = camX;
-        camX += (targetX - camX) * 0.12f;
+        if (def.autoscroll > 0) {
+            if (state == PLAY && frame > 100 && !player.dying) camX += def.autoscroll;
+        } else camX += (targetX - camX) * 0.12f;
         camX = Math.max(minX, Math.min(maxX, camX));
         if (maxX < 0) camX = maxX / 2f; // level narrower than the screen: centre it
         float targetY = player.y - H * 0.52f;
@@ -561,7 +623,8 @@ public final class Level {
         state = BOSSWIN;
         stateT = 0;
         game.audio.music(Music.CLEAR);
-        banner = "MONDO " + (def.world + 1) + " COMPLETATO!";
+        banner = def.worldBoss() ? (def.world >= 4 ? Theme.get(def.world).name + " SUPERATO!" : "MONDO " + (def.world + 1) + " COMPLETATO!")
+                : "CASTELLO SUPERATO!";
         bannerT = 999;
     }
 
@@ -585,6 +648,7 @@ public final class Level {
             sx = (frame * 7 % 5) - 2;
             sy = (frame * 13 % 5) - 2;
         }
+        theme.stage = def.pos;
         theme.drawBackground(g, camX, camY, th * T, frame);
         g.ox = sx;
         g.oy = sy;
@@ -625,6 +689,20 @@ public final class Level {
                     case ICE: s = theme.ice; break;
                     case CANNON: s = Art.cannon[0]; break;
                     case GATE: s = theme.gate; break;
+                    case CONV_L: s = theme.conv[(frame / 6) % 2]; break;
+                    case CONV_R: s = theme.conv[1 - (frame / 6) % 2]; break;
+                    case UBLOCK: s = theme.ublock; break;
+                    case TIMED_A:
+                    case TIMED_B: {
+                        boolean on = (t == TIMED_A) == phaseA;
+                        int left = PHASE - frame % PHASE;
+                        Sprite ts = t == TIMED_A ? theme.timedA : theme.timedB;
+                        if (on) g.blit(ts, x, y, false, left < 40 && (left / 5) % 2 == 0 ? 120 : 255, 0);
+                        else {
+                            g.blit(ts, x, y, false, left < 40 && (left / 5) % 2 == 0 ? 140 : 45, 0);
+                        }
+                        continue;
+                    }
                 }
                 g.blit(s, x, y);
             }

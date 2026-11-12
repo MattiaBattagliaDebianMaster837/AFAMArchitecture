@@ -3,7 +3,7 @@ package it.pixelquest.core;
 /** Original chiptune soundtrack, written in a tiny tracker notation and rendered to PCM. */
 public final class Music {
     public static final int TITLE = 0, MAP = 1, W1 = 2, W2 = 3, W3 = 4, W4 = 5, BOSS = 6, STAR = 7, CLEAR = 8,
-            GAMEOVER = 9, ENDING = 10, N = 11;
+            GAMEOVER = 9, ENDING = 10, W5 = 11, W6 = 12, W7 = 13, FINAL = 14, N = 15;
 
     private static final short[][] cache = new short[N][];
 
@@ -102,6 +102,45 @@ public final class Music {
                     "-:16 | -:16 | -:16",
                     "C3:8 F2:8 | C2:16 | -:16",
                     "................ ................ ................"};
+            case W5: return new Object[]{140, // Primo anno: sunny Palermo morning
+                    "A4:2 D5:2 F#5:2 A5:4 F#5:2 A5:2 B5:2 | A5:4 F#5:2 D5:2 E5:8 | G4:2 B4:2 D5:2 G5:4 F#5:2 E5:2 D5:2 | E5:6 F#5:2 E5:4 -:4 |"
+                            + "A4:2 D5:2 F#5:2 A5:4 F#5:2 A5:2 D6:2 | C#6:4 B5:2 A5:2 B5:4 G5:4 | F#5:2 A5:2 E5:2 G5:2 D5:2 F#5:2 C#5:2 E5:2 | D5:8 -:8",
+                    "D5 F#5 A5 F#5 D5 F#5 A5 F#5 D5 F#5 A5 F#5 D5 F#5 A5 F#5 | C#5 E5 A5 E5 C#5 E5 A5 E5 C#5 E5 A5 E5 C#5 E5 A5 E5 |"
+                            + "B4 D5 G5 D5 B4 D5 G5 D5 B4 D5 G5 D5 B4 D5 G5 D5 | C#5 E5 A5 E5 C#5 E5 A5 E5 C#5 E5 A5 E5 C#5 E5 A5 E5 |"
+                            + "D5 F#5 A5 F#5 D5 F#5 A5 F#5 D5 F#5 A5 F#5 D5 F#5 A5 F#5 | B4 D5 G5 D5 B4 D5 G5 D5 B4 D5 G5 D5 B4 D5 G5 D5 |"
+                            + "C#5 E5 A5 E5 C#5 E5 A5 E5 C#5 E5 G5 E5 C#5 E5 G5 E5 | D5 F#5 A5 F#5 D5 F#5 A5 F#5 D5:8",
+                    "D3:2 -:2 A2:2 -:2 D3:2 -:2 A2:2 -:2 | A2:2 -:2 E3:2 -:2 A2:2 -:2 E3:2 -:2 | G2:2 -:2 D3:2 -:2 G2:2 -:2 D3:2 -:2 | A2:2 -:2 E3:2 -:2 A2:2 -:2 C#3:2 -:2 |"
+                            + "D3:2 -:2 A2:2 -:2 D3:2 -:2 A2:2 -:2 | G2:2 -:2 D3:2 -:2 G2:2 -:2 B2:2 -:2 | A2:2 -:2 E3:2 -:2 A2:2 -:2 A2:2 -:2 | D3:2 -:2 A2:2 -:2 D3:4 -:4",
+                    "k.h.s.h.k.h.s.hh k.h.s.h.k.k.s.h. k.h.s.h.k.h.s.hh k.h.s.h.k.k.s.ss"};
+            case W6: return new Object[]{118, // Secondo anno: lessons and labs
+                    "A4:2 C5:2 E5:2 A5:2 G5:2 E5:2 C5:2 E5:2 | F5:2 E5:2 D5:2 C5:2 B4:4 E5:4 | A4:2 C5:2 E5:2 A5:2 B5:2 C6:2 B5:2 A5:2 | G#5:8 E5:8 |"
+                            + "F5:2 A5:2 C6:2 A5:2 E5:2 G5:2 C6:2 G5:2 | D5:2 F5:2 A5:2 F5:2 B4:2 D5:2 G#5:2 E5:2 | A5:4 E5:4 C5:4 B4:4 | A4:8 -:8",
+                    "A3:1 -:1 E4:1 -:1 A3:1 -:1 E4:1 -:1 A3:1 -:1 E4:1 -:1 A3:1 -:1 E4:1 -:1 | D4:1 -:1 A4:1 -:1 D4:1 -:1 A4:1 -:1 E4:1 -:1 B4:1 -:1 E4:1 -:1 B4:1 -:1 |"
+                            + "A3:1 -:1 E4:1 -:1 A3:1 -:1 E4:1 -:1 A3:1 -:1 E4:1 -:1 A3:1 -:1 E4:1 -:1 | E4:1 -:1 B4:1 -:1 E4:1 -:1 B4:1 -:1 E4:1 -:1 G#4:1 -:1 E4:1 -:1 B4:1 -:1 |"
+                            + "F4:1 -:1 C5:1 -:1 F4:1 -:1 C5:1 -:1 C4:1 -:1 G4:1 -:1 C4:1 -:1 G4:1 -:1 | D4:1 -:1 A4:1 -:1 D4:1 -:1 A4:1 -:1 E4:1 -:1 B4:1 -:1 E4:1 -:1 B4:1 -:1 |"
+                            + "A3:1 -:1 E4:1 -:1 A3:1 -:1 E4:1 -:1 E4:1 -:1 B4:1 -:1 E4:1 -:1 B4:1 -:1 | A3:1 -:1 E4:1 -:1 A3:4 -:4 -:4",
+                    "A2:4 E3:4 A2:4 E3:4 | D3:4 A2:4 E2:4 B2:4 | A2:4 E3:4 A2:4 E3:4 | E2:4 B2:4 E2:4 G#2:4 | F2:4 C3:4 C3:4 G2:4 | D3:4 A2:4 E2:4 B2:4 | A2:4 E2:4 E2:4 B2:4 | A2:8 -:8",
+                    "k...h...s...h... k...h...s...h.h. k...h...s...h... k...h...s.s.h.h."};
+            case W7: return new Object[]{168, // Ultimo anno: the great escape
+                    "E5:1 E5:1 -:1 E5:1 G5:2 E5:2 B5:2 A5:2 G5:2 F#5:2 | E5:2 D5:2 E5:4 B4:8 | C5:1 C5:1 -:1 C5:1 E5:2 C5:2 G5:2 F#5:2 E5:2 D5:2 | B4:4 D#5:4 F#5:4 B5:4 |"
+                            + "E5:1 E5:1 -:1 E5:1 G5:2 E5:2 B5:2 C6:2 B5:2 A5:2 | G5:2 F#5:2 E5:2 D5:2 E5:4 G5:4 | A5:2 G5:2 F#5:2 E5:2 D#5:2 F#5:2 B4:4 | E5:8 -:8",
+                    "B4:2 -:2 B4:2 -:2 B4:2 -:2 B4:2 -:2 | B4:2 -:2 G4:2 -:2 G4:2 -:2 G4:2 -:2 | G4:2 -:2 G4:2 -:2 G4:2 -:2 G4:2 -:2 | F#4:2 -:2 F#4:2 -:2 D#5:2 -:2 D#5:2 -:2 |"
+                            + "B4:2 -:2 B4:2 -:2 B4:2 -:2 C5:2 -:2 | B4:2 -:2 A4:2 -:2 G4:2 -:2 B4:2 -:2 | C5:2 -:2 A4:2 -:2 F#4:2 -:2 D#4:2 -:2 | E4:4 -:12",
+                    "E2:2 E3:2 E2:2 E3:2 E2:2 E3:2 E2:2 E3:2 | E2:2 E3:2 E2:2 E3:2 E2:2 E3:2 E2:2 E3:2 | C2:2 C3:2 C2:2 C3:2 C2:2 C3:2 C2:2 C3:2 | B1:2 B2:2 B1:2 B2:2 B1:2 B2:2 B1:2 B2:2 |"
+                            + "E2:2 E3:2 E2:2 E3:2 E2:2 E3:2 E2:2 E3:2 | G2:2 G3:2 G2:2 G3:2 E2:2 E3:2 E2:2 E3:2 | A2:2 A3:2 A2:2 A3:2 B1:2 B2:2 B1:2 B2:2 | E2:2 E3:2 E2:2 E3:2 E2:8",
+                    "k.h.s.hhk.k.s.hh k.h.s.hhk.k.s.hh k.h.s.hhk.k.s.hh k.h.s.hhkkk.ssss"};
+            case FINAL: return new Object[]{176, // Prof. Garbo
+                    "D5:2 F5:2 A5:2 D6:2 C#6:2 A5:2 F5:2 A5:2 | A#5:4 A5:4 G5:4 E5:4 | D5:2 F5:2 A5:2 D6:2 E6:2 F6:2 E6:2 D6:2 | C#6:8 A5:8 |"
+                            + "D6:2 A5:2 F5:2 D5:2 A#5:2 G5:2 E5:2 C#5:2 | D5:2 E5:2 F5:2 G5:2 A5:4 C#6:4 | D6:4 A5:4 F5:4 E5:4 | D5:8 -:8",
+                    "A4 D5 F5 D5 A4 D5 F5 D5 A4 D5 F5 D5 A4 D5 F5 D5 | A#4 D5 G5 D5 A#4 D5 G5 D5 A4 C#5 E5 C#5 A4 C#5 E5 C#5 |"
+                            + "A4 D5 F5 D5 A4 D5 F5 D5 A4 D5 F5 D5 A4 D5 F5 D5 | A4 C#5 E5 C#5 A4 C#5 E5 C#5 A4 C#5 E5 C#5 A4 C#5 E5 C#5 |"
+                            + "A#4 D5 F5 D5 A#4 D5 F5 D5 G4 A#4 E5 A#4 G4 A#4 E5 A#4 | A4 D5 F5 D5 A4 D5 F5 D5 A4 C#5 E5 C#5 A4 C#5 E5 C#5 |"
+                            + "A4 D5 F5 D5 A4 D5 F5 D5 A4 C#5 E5 C#5 A4 C#5 E5 C#5 | A4 D5 F5 D5 A4:4 -:8",
+                    "D2:1 D2:1 D3:1 D2:1 D2:1 D2:1 D3:1 D2:1 D2:1 D2:1 D3:1 D2:1 D2:1 D2:1 D3:1 D2:1 | A#1:1 A#1:1 A#2:1 A#1:1 A#1:1 A#1:1 A#2:1 A#1:1 A1:1 A1:1 A2:1 A1:1 A1:1 A1:1 A2:1 A1:1 |"
+                            + "D2:1 D2:1 D3:1 D2:1 D2:1 D2:1 D3:1 D2:1 D2:1 D2:1 D3:1 D2:1 D2:1 D2:1 D3:1 D2:1 | A1:1 A1:1 A2:1 A1:1 A1:1 A1:1 A2:1 A1:1 A1:1 A1:1 A2:1 A1:1 A1:1 A1:1 A2:1 A1:1 |"
+                            + "A#1:1 A#1:1 A#2:1 A#1:1 A#1:1 A#1:1 A#2:1 A#1:1 G1:1 G1:1 G2:1 G1:1 G1:1 G1:1 G2:1 G1:1 | D2:1 D2:1 D3:1 D2:1 D2:1 D2:1 D3:1 D2:1 A1:1 A1:1 A2:1 A1:1 A1:1 A1:1 A2:1 A1:1 |"
+                            + "D2:1 D2:1 D3:1 D2:1 D2:1 D2:1 D3:1 D2:1 A1:1 A1:1 A2:1 A1:1 A1:1 A1:1 A2:1 A1:1 | D2:4 A1:4 D2:8",
+                    "k.h.s.h.k.k.s.hh k.h.s.h.k.k.s.hh k.h.s.h.k.k.s.hh kkkks.s.k.kss.ss k.h.s.h.k.k.s.hh k.h.s.h.k.k.s.hh k.h.s.h.k.k.s.hh kkkks.s.k.kss.ss"};
             default: // ENDING: the title theme played warmly
                 Object[] t = data(TITLE);
                 t[0] = 116;
@@ -120,7 +159,7 @@ public final class Music {
         renderVoice(mix, (String) d[1], step, 0, 0.25f, 0.20f);   // lead: 25% square
         renderVoice(mix, (String) d[2], step, 0, 0.125f, 0.08f);  // harmony/arp: thin square
         renderVoice(mix, (String) d[3], step, 1, 0, 0.32f);       // bass: triangle
-        renderDrums(mix, (String) d[4], step);
+        renderDrums(mix, (String) d[4], step, steps);
         short[] out = new short[len];
         for (int i = 0; i < len; i++) out[i] = (short) Math.max(-32767, Math.min(32767, mix[i] * 0.8f * 32767));
         return out;
@@ -170,10 +209,11 @@ public final class Music {
         }
     }
 
-    private static void renderDrums(float[] mix, String s, float step) {
+    private static void renderDrums(float[] mix, String s, float step, int steps) {
         String p = s.replace(" ", "");
-        for (int k = 0; k < p.length(); k++) {
-            char c = p.charAt(k);
+        if (p.isEmpty()) return;
+        for (int k = 0; k < steps; k++) {
+            char c = p.charAt(k % p.length());
             int start = (int) (k * step);
             if (c == 'k') {
                 int n = (int) (Audio.RATE * 0.12f);

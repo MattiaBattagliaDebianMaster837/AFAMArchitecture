@@ -155,7 +155,7 @@ public final class Combat {
         }
 
         public static PShot reflect(Entity shot, int dir) {
-            Sprite sp = shot instanceof Ents.Shot ? ((Ents.Shot) shot).sprite() : Art.cannonBall;
+            Sprite sp = shot instanceof Ents.Shot ? ((Ents.Shot) shot).sprite() : shot instanceof Uni.UShot ? ((Uni.UShot) shot).sprite() : Art.cannonBall;
             PShot s = new PShot(REFLECT, shot.cx(), shot.cy(), 6.5f * dir, -0.6f, sp, shot.w, shot.h);
             s.dmg = 2;
             s.bossDmg = 2;

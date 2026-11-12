@@ -604,7 +604,7 @@ public final class Ents {
 
         /** Speed multiplier: later worlds are faster. */
         float speedK() {
-            return 1f + L.def.world * 0.12f;
+            return 1f + Math.min(L.def.world, 5) * 0.12f;
         }
 
         @Override

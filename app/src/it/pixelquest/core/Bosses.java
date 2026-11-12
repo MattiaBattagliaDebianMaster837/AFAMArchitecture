@@ -4,8 +4,9 @@ package it.pixelquest.core;
 public final class Bosses {
     static final int T = Level.T;
 
-    public static Boss create(int world, float x, float y) {
-        switch (world) {
+    public static Boss create(int bossId, float x, float y) {
+        if (bossId >= 4) return UniBosses.create(bossId, x, y);
+        switch (bossId) {
             case 1: return new Scarab(x, y);
             case 2: return new Yeti(x, y);
             case 3: return new Magmus(x, y);
