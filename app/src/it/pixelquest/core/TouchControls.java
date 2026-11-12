@@ -38,6 +38,10 @@ public final class TouchControls {
     public volatile boolean enabled = true;
     public float ax, ay;
     public boolean a, b, c, s, pause;
+    /** A finger landed on the button since the last poll. This is a press even when another touch was already
+     *  holding the same button (e.g. the palm resting on the screen corner, which counts as A): without it the
+     *  real press made no new "edge" and the jump only started when the stray contact went away. */
+    public boolean aNew, bNew, cNew, sNew;
     /** Special button shown (in levels) and how full the energy bar is (0..1). */
     public volatile boolean showS;
     public volatile float sFill;
@@ -77,10 +81,12 @@ public final class TouchControls {
         if (geoW == W && geoH == H) return;
         geoW = W;
         geoH = H;
-        set(gA, W - 40, H - 48, 24);
-        set(gB, W - 96, H - 34, 20);
-        set(gC, W - 84, H - 98, 19);
-        set(gS, W - 146, H - 84, 17);
+        // a little away from the right edge and the corner, where the hand rests and Android watches for
+        // edge gestures
+        set(gA, W - 50, H - 52, 24);
+        set(gB, W - 106, H - 36, 20);
+        set(gC, W - 94, H - 102, 19);
+        set(gS, W - 156, H - 88, 17);
         set(gP, W - 16, 14, 11);
         gL[0] = 34; gL[1] = H - 46; gL[2] = 27; gL[3] = 25;
         gR[0] = 98; gR[1] = H - 46; gR[2] = 27; gR[3] = 25;
@@ -155,7 +161,10 @@ public final class TouchControls {
         float dC = dist(x, y, C[0], C[1]) / C[2];
         float dS = showS ? dist(x, y, S[0], S[1]) / S[2] : 999;
         float best = Math.min(Math.min(dA, dB), Math.min(dC, dS));
-        // anything in the lower right area counts, even right at the screen edge / corner
+        // anything in the lower right area counts, but not the last few pixels along the right / bottom edge:
+        // that is where the palm or the base of the thumb rests while holding the phone
+        boolean edge = (x > W - 6 || y > H - 4) && dA > 1.5f;
+        if (edge && cur == NONE) return NONE;
         boolean lowerRight = y > H * 0.45f && x > W * 0.55f;
         if (best > (cur != NONE ? 3.2f : 2.8f) && !lowerRight) return NONE;
         if (cur != NONE) {
@@ -301,10 +310,10 @@ public final class TouchControls {
         releaseTaps.addAll(pendingReleases);
         pendingReleases.clear();
         ax = ay = 0;
-        a = pendA;
-        b = pendB;
-        c = pendC;
-        s = pendS;
+        a = aNew = pendA;
+        b = bNew = pendB;
+        c = cNew = pendC;
+        s = sNew = pendS;
         pause = pendPause;
         pendA = pendB = pendC = pendS = pendPause = false;
         stickActive = false;

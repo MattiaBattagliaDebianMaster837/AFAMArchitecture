@@ -508,7 +508,7 @@ public final class Game {
         // slime chasing for fun
         g.blit(Art.slime[0][(frame / 12) % 2].scaled(2), W / 2 + 70, gy - 22);
         if ((frame / 30) % 2 == 0) g.textC("TOCCA PER INIZIARE", W / 2, H - 14, 0xFFFFFFFF, 0xFF000000, 1);
-        g.text("V1.4", W - 28, H - 10, 0xFFFFFFFF, 1, 160);
+        g.text("V1.5", W - 28, H - 10, 0xFFFFFFFF, 1, 160);
     }
 
     private void renderSelect(Gfx g) {

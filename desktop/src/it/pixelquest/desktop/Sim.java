@@ -417,7 +417,7 @@ public class Sim {
         startLevel(0);
         Player p = g.level.player;
         float y0 = p.y;
-        tc.down(1, W - 3, H - 3);
+        tc.down(1, W - 12, H - 8);
         tc.up(1);
         step(1);
         check("corner tap on A starts the jump on the next frame (vy=" + p.vy + ")", p.vy < -3);
@@ -425,7 +425,7 @@ public class Sim {
         for (int i = 0; i < 60; i++) { step(1); minY = Math.min(minY, p.y); }
         check("quick tap jump height = " + (int) (y0 - minY) + "px (>= 35)", y0 - minY >= 35);
         // 2) taps between A, B, C all register
-        float[][] pts = {{W - 40, H - 48}, {W - 96, H - 34}, {W - 84, H - 98}, {W - 60, H - 20}, {W - 10, H - 70}};
+        float[][] pts = {{W - 50, H - 52}, {W - 106, H - 36}, {W - 94, H - 102}, {W - 66, H - 20}, {W - 12, H - 70}};
         String[] exp = {"A", "B", "C", "A", "A"};
         for (int k = 0; k < pts.length; k++) {
             tc.down(2, pts[k][0], pts[k][1]);
@@ -434,6 +434,26 @@ public class Sim {
             tc.up(2);
             tc.poll();
             check("touch at " + (int) pts[k][0] + "," + (int) pts[k][1] + " -> " + got, got.equals(exp[k]));
+        }
+        // 2a) the palm resting on the right edge must not delay a real press on A: the jump starts at once
+        for (int k = 0; k < 2; k++) {
+            startLevel(0);
+            p = g.level.player;
+            step(10);
+            float[] A = tc.btnA();
+            // k=0: contact on the extreme edge strip; k=1: contact inside the catch-all corner region (counts as A)
+            tc.down(20, k == 0 ? W - 2 : W - 14, k == 0 ? H - 60 : H - 10);
+            step(30); // resting there
+            p = g.level.player;
+            for (int i = 0; i < 120 && !p.onGround; i++) step(1); // (a contact inside A's area jumps by itself)
+            step(3);
+            float vy0 = p.vy;
+            tc.down(21, A[0], A[1]);
+            step(1);
+            check("palm on the " + (k == 0 ? "edge" : "corner") + " + press on A: jump on the same frame (vy " + vy0 + " -> " + p.vy + ")", p.vy < -3);
+            tc.up(21);
+            tc.up(20);
+            step(40);
         }
         // 2b) a thumb resting on the A/B border keeps holding A (no flicker that cuts the jump / re-presses)
         {

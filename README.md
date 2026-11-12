@@ -35,7 +35,11 @@ fatte con `./build.sh` usano la stessa chiave, quindi si installano sopra la ver
 
 Reattività dei comandi:
 - **Tasti A/B/C:** tutta la parte destra dello schermo è divisa tra i tre tasti (vince il più vicino), quindi un tocco
-  verso il bordo o nell'angolo viene comunque preso. Anche un tocco brevissimo viene registrato e fa un salto vero.
+  un po' fuori dal cerchio viene comunque preso. Anche un tocco brevissimo viene registrato e fa un salto vero.
+- **Ogni dito nuovo è una pressione:** se il palmo o la base del pollice appoggiano sull'angolo dello schermo (che conta
+  come A), la vera pressione su A fa saltare subito. Prima sembrava che A fosse già premuto e il salto partiva solo
+  quando il contatto si staccava. La striscia più esterna del bordo destro e inferiore viene ignorata, perché lì
+  appoggia la mano, e i tasti sono un po' più lontani dal bordo.
 - **Levetta:** se tocchi il pad il personaggio parte subito. Se tocchi altrove a sinistra il pad si sposta sotto il dito.
   Il pad segue il dito, quindi per invertire la direzione basta un piccolo movimento.
 - **Vibrazione:** una breve vibrazione conferma ogni pressione (si può disattivare). Non rallenta mai il tocco

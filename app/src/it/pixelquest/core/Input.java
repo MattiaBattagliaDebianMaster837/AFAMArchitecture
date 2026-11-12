@@ -46,10 +46,11 @@ public final class Input {
         c = keyC || (tc != null && tc.c);
         s = keyS || (tc != null && tc.s);
         pause = keyPause || (tc != null && tc.pause);
-        aP = a && !pa;
-        bP = b && !pb;
-        cP = c && !pc;
-        sP = s && !ps;
+        // a new finger on a button is always a press, even if another touch was already holding it
+        aP = a && !pa || tc != null && tc.aNew;
+        bP = b && !pb || tc != null && tc.bNew;
+        cP = c && !pc || tc != null && tc.cNew;
+        sP = s && !ps || tc != null && tc.sNew;
         pauseP = pause && !ppause;
         leftP = left() && !pl;
         rightP = right() && !pr;
