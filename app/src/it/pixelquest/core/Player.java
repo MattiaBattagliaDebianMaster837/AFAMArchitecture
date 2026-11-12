@@ -423,14 +423,19 @@ public final class Player extends Entity {
                 }
             } else Combat.hit(L, e, 2, 1, power, PUNCH, false, cx());
         }
-        int c = (int) Math.floor((facing > 0 ? hx + bw : hx) / Level.T);
-        for (int r = (int) (hy / Level.T); r <= (int) ((hy + bh - 1) / Level.T); r++) {
-            byte tl = L.tile(c, r);
-            if (tl == Level.BRICK || tl == Level.QBLOCK) {
-                L.hitBlock(c, r, false);
-                break;
+        // smash the first brick along the swing, from the hero's front to the tip of the bat
+        // (checking only the tip column missed a wall the hero was standing right against)
+        int c0 = (int) Math.floor((facing > 0 ? right() - 1 : x + 1) / Level.T);
+        int c1 = (int) Math.floor((facing > 0 ? hx + bw : hx) / Level.T);
+        outer:
+        for (int c = c0; facing > 0 ? c <= c1 : c >= c1; c += facing > 0 ? 1 : -1)
+            for (int r = (int) (hy / Level.T); r <= (int) ((hy + bh - 1) / Level.T); r++) {
+                byte tl = L.tile(c, r);
+                if (tl == Level.BRICK || tl == Level.QBLOCK) {
+                    L.hitBlock(c, r, false);
+                    break outer;
+                }
             }
-        }
     }
 
     // ================================================================ special

@@ -64,7 +64,9 @@ Combinazioni comuni a tutti i personaggi:
 | **Andrea Sapienza**: frangia scura, maglia nera | **Mazza totem** (nera, a forma di persona): swing ogni secondo che rispedisce indietro palle di cannone e proiettili e scaglia via i nemici, che diventano proiettili | **Totem di fuoco**: il totem gigante appare sopra di lui e lancia palle di fuoco per 4,5 s |
 | **Paolo Zingales**: ciuffo, barba folta, maglia grigia | **Pallone**: calcio con 3 grandi rimbalzi, danno 2 (si ricarica in 2,5 s) | **Super tiro**: un pallone gigante va dritto e travolge nemici e mattoni (5 ai boss) |
 
-Tutti hanno in comune corsa, salto variabile, spin, wall jump e triplo salto con capriola. Il personaggio si sceglie
+Tutti hanno in comune corsa, salto variabile, spin, wall jump e triplo salto con capriola, e con l'abilità **C**
+tutti possono rompere i mattoni davanti a sé (pugno, colpi di pistola, moneta, mazza, pallone): alcune gemme sono
+murate dentro i mattoni. Il personaggio si sceglie
 all'avvio e si cambia dalla mappa (tasto C "EROE" o dal menu).
 
 ### Energia e mosse speciali

@@ -228,7 +228,9 @@ public final class Combat {
                 int c = (int) Math.floor(fx / T), r = (int) Math.floor(cy() / T);
                 byte tl = L.tile(c, r);
                 if (Level.solid(tl)) {
-                    if (breaksBricks && (tl == Level.BRICK || tl == Level.QBLOCK)) L.hitBlock(c, r, false);
+                    // bullets, the heavy gold coin and the ball all smash bricks they fly into (every hero can open
+                    // a brick wall with the C ability)
+                    if ((breaksBricks || kind == COIN || kind == BALL) && (tl == Level.BRICK || tl == Level.QBLOCK)) L.hitBlock(c, r, false);
                     if (wallBounce) {
                         x -= vx;
                         vx = -vx * 0.9f;

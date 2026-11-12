@@ -63,11 +63,23 @@ public class Sim {
         else if (sc.equals("maptest")) maptest();
         else if (sc.equals("cash")) cash();
         else if (sc.equals("spring")) {
+            g.save.hero = Integer.getInteger("hero", 0);
             startLevel(Integer.parseInt(args[2]));
-            if (args.length > 3) it.pixelquest.core.SpringCheck.path(g, Integer.parseInt(args[3]), Integer.parseInt(args[4]),
-                    Float.parseFloat(args[5]), Float.parseFloat(args[6]));
-            if (Boolean.getBoolean("pathShot")) shot("path_" + args[2]);
-            else it.pixelquest.core.SpringCheck.run(g, Integer.parseInt(args[2]));
+            if (args.length > 3) {
+                it.pixelquest.core.SpringCheck.path(g, Integer.parseInt(args[3]), Integer.parseInt(args[4]),
+                        Float.parseFloat(args[5]), Float.parseFloat(args[6]));
+                if (Boolean.getBoolean("pathShot")) shot("path_" + args[2]);
+            } else it.pixelquest.core.SpringCheck.run(g, Integer.parseInt(args[2]));
+        } else if (sc.equals("bricks")) {
+            it.pixelquest.core.BrickCheck.run(g, new Runnable() {
+                public void run() {
+                    try {
+                        startLevel(0);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            });
         } else if (sc.equals("items")) {
             startLevel(0);
             it.pixelquest.core.ItemCheck.run(g);
