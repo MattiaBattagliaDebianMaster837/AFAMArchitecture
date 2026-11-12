@@ -11,16 +11,28 @@ public final class Music {
         return id != CLEAR && id != GAMEOVER;
     }
 
-    public static synchronized short[] get(int id) {
-        if (cache[id] == null) cache[id] = render(id);
-        return cache[id];
+    private static final Object[] locks = new Object[N];
+
+    static {
+        for (int i = 0; i < N; i++) locks[i] = new Object();
+    }
+
+    /** PCM of a track, rendered on first use. One lock per track, so asking for a track that is ready never
+     *  waits for the background pre-render of another one. */
+    public static short[] get(int id) {
+        synchronized (locks[id]) {
+            if (cache[id] == null) cache[id] = render(id);
+            return cache[id];
+        }
     }
 
     /** Pre-render every track on a background thread so level starts don't hitch. */
     public static void prewarm() {
         Thread th = new Thread(new Runnable() {
             public void run() {
-                for (int i = 0; i < N; i++) get(i);
+                // most likely first: title, map, world 1, boss, star, clear
+                int[] order = {TITLE, MAP, W1, BOSS, STAR, CLEAR, W2, W3, W4, W5, W6, W7, FINAL, GAMEOVER, ENDING};
+                for (int i : order) get(i);
             }
         }, "music-prewarm");
         th.setPriority(Thread.MIN_PRIORITY);

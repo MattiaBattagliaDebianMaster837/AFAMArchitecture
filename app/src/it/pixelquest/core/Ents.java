@@ -169,10 +169,11 @@ public final class Ents {
             if (rise > 0) {
                 rise--;
                 y -= 1;
+                // once out of the block it walks off it (towards where the hero is heading), like the hearts
+                if (rise == 0 && L.player != null) facing = L.player.facing;
                 return;
             }
             float sp = kind == STAR ? 1.3f : kind == LIFE ? 1.1f : 0.7f;
-            if (kind == FIRE || kind == ICE) sp = 0; // flowers stay put
             vx = facing * sp;
             physics(0.3f, 5);
             if (hitL || hitR) facing = -facing;

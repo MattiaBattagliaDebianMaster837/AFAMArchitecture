@@ -60,6 +60,18 @@ public class Sim {
         else if (sc.equals("controls")) controls();
         else if (sc.equals("abilities")) abilities();
         else if (sc.equals("batpose")) batpose();
+        else if (sc.equals("maptest")) maptest();
+        else if (sc.equals("cash")) cash();
+        else if (sc.equals("spring")) {
+            startLevel(Integer.parseInt(args[2]));
+            if (args.length > 3) it.pixelquest.core.SpringCheck.path(g, Integer.parseInt(args[3]), Integer.parseInt(args[4]),
+                    Float.parseFloat(args[5]), Float.parseFloat(args[6]));
+            if (Boolean.getBoolean("pathShot")) shot("path_" + args[2]);
+            else it.pixelquest.core.SpringCheck.run(g, Integer.parseInt(args[2]));
+        } else if (sc.equals("items")) {
+            startLevel(0);
+            it.pixelquest.core.ItemCheck.run(g);
+        }
         else if (sc.equals("look")) look(Integer.parseInt(args[2]), Integer.parseInt(args[3]));
         System.out.println("done");
     }
@@ -233,10 +245,12 @@ public class Sim {
             } catch (Exception e) {
                 continue;
             }
-            for (int hero = 0; hero < 2; hero++) {
+            if (i < Integer.getInteger("botFrom", 0) || i > Integer.getInteger("botTo", 999)) continue;
+            for (int hero = 0; hero < Integer.getInteger("botHeroes", 2); hero++) {
+                if (Integer.getInteger("botHero") != null && hero != Integer.getInteger("botHero")) continue;
                 long t0 = System.currentTimeMillis();
                 Bot b = new Bot(g, i, hero);
-                String r = b.solve(1500);
+                String r = b.solve(Integer.getInteger("botNodes", 1500));
                 System.out.println("level " + i + " hero " + hero + ": " + r + "  [" + (System.currentTimeMillis() - t0) + " ms]");
             }
         }
@@ -409,6 +423,27 @@ public class Sim {
             tc.poll();
             check("touch at " + (int) pts[k][0] + "," + (int) pts[k][1] + " -> " + got, got.equals(exp[k]));
         }
+        // 2b) a thumb resting on the A/B border keeps holding A (no flicker that cuts the jump / re-presses)
+        {
+            float[] A = tc.btnA(), B = tc.btnB();
+            // point where the normalised distances to A and B are equal, on the segment between them
+            float k = A[2] / (A[2] + B[2]);
+            float bx = A[0] + (B[0] - A[0]) * k, by = A[1] + (B[1] - A[1]) * k;
+            tc.down(7, bx + 2, by - 1); // lands just on the A side (A is up and to the right of B)
+            tc.poll();
+            int aFrames = 0, presses = tc.a ? 1 : 0;
+            boolean prev = tc.a;
+            for (int i = 0; i < 40; i++) {
+                tc.move(7, bx + (i % 2 == 0 ? 3 : -3), by + (i % 3) - 1);
+                tc.poll();
+                if (tc.a) aFrames++;
+                if (tc.a && !prev) presses++;
+                prev = tc.a;
+            }
+            tc.up(7);
+            tc.poll();
+            check("thumb jittering on the A/B border keeps A held (" + aFrames + "/40 frames, " + presses + " press)", aFrames == 40 && presses == 1);
+        }
         // 3) stick: touching the pad slightly right moves at once, frames to walk/run speed
         startLevel(0);
         p = g.level.player;
@@ -474,7 +509,7 @@ public class Sim {
         step(5);
         check("B on the map opens the menu (screen=" + g.screen + ")", g.screen == Game.MENU);
         shot("c2_menu");
-        tc.down(5, W / 2f, 62 + 19 + 3); // tap "COMANDI"
+        tc.down(5, W / 2f, 56 + 3 * 18 + 4); // tap "COMANDI" (4th row: CONTINUA, POTENZIAMENTI, CAMBIA PERSONAGGIO, COMANDI)
         tc.up(5);
         step(2);
         check("tapping COMANDI switches to arrows (mode=" + tc.mode + ")", tc.mode == TouchControls.ARROWS && g.save.controls == TouchControls.ARROWS);
@@ -486,7 +521,7 @@ public class Sim {
         fc.setAccessible(true);
         fc.setInt(g, 0);
         step(20);
-        tc.down(6, W / 2f + 60, 140);
+        tc.down(6, W / 2f - Hero.ALL.length * 24 / 2f + 24 + 12, 200); // second portrait in the strip
         tc.up(6);
         step(3);
         check("tap on Giuseppe's card selects without confirming (screen=" + g.screen + ", cursor=" + fc.getInt(g) + ")",
@@ -595,6 +630,85 @@ public class Sim {
     }
 
     /** Screenshot of a level at a given column (enemies included). */
+    /** From every node, press "right" once (arrows and stick): the icon must move exactly one node forward. */
+    static void maptest() throws Exception {
+        java.lang.reflect.Field fm = Game.class.getDeclaredField("map");
+        fm.setAccessible(true);
+        Object map = fm.get(g);
+        java.lang.reflect.Field fcur = map.getClass().getDeclaredField("cur");
+        fcur.setAccessible(true);
+        java.lang.reflect.Method go = Game.class.getDeclaredMethod("go", int.class, int.class);
+        go.setAccessible(true);
+        TouchControls tc = g.touch;
+        g.save.unlocked = Save.LEVELS - 1;
+        g.save.seenIntro = true;
+        int fails = 0, total = 0;
+        for (int mode = 0; mode < 2; mode++) {
+            tc.mode = mode;
+            for (int n = 0; n < Save.LEVELS - 1; n++) {
+                g.save.lastNode = n;
+                go.invoke(g, Game.MAP, 0);
+                for (int i = 0; i < 200; i++) g.tick();
+                if (mode == TouchControls.ARROWS) {
+                    float[] r = tc.arrowR();
+                    tc.down(5, r[0] + 10, r[1] + 8);
+                    for (int i = 0; i < 4; i++) g.tick();
+                } else {
+                    tc.down(5, tc.defBaseX(), tc.defBaseY());
+                    g.tick();
+                    tc.move(5, tc.defBaseX() + 30, tc.defBaseY());
+                    for (int i = 0; i < 4; i++) g.tick();
+                }
+                tc.up(5);
+                for (int i = 0; i < 60; i++) g.tick();
+                int cur = fcur.getInt(map);
+                total++;
+                if (cur != n + 1) {
+                    fails++;
+                    System.out.println("  mode " + mode + " from node " + n + " -> " + cur);
+                }
+            }
+        }
+        System.out.println("maptest: " + (total - fails) + "/" + total + " presses moved exactly one node forward");
+    }
+
+    /** Francesco's banknotes vs Paolo's ball: slimes around the hero at various distances. */
+    static void cash() throws Exception {
+        String[] nm = {"mattia", "giuseppe", "francesco", "andrea", "paolo"};
+        float[][] spots = {{24, 0}, {44, 0}, {64, 0}, {110, 0}, {-26, 0}, {-46, 0}};
+        for (int h : new int[]{2, 4}) {
+            for (int upg = 0; upg <= 2; upg += 2) {
+                g.save.hero = h;
+                g.save.upgrades[h] = upg;
+                startLevel(0);
+                Level l = g.level;
+                Player p = l.player;
+                l.ents.clear();
+                StringBuilder hit = new StringBuilder();
+                java.util.List<Ents.Slime> sl = new java.util.ArrayList<>();
+                for (float[] sp : spots) {
+                    Ents.Slime e = new Ents.Slime(p.cx() + sp[0] - 8, p.y + 10, 0);
+                    e.L = l;
+                    e.alwaysActive = true;
+                    l.ents.add(e);
+                    sl.add(e);
+                }
+                p.facing = 1;
+                keys(0, false, false, true);
+                step(1);
+                keys(0, false, false, false);
+                for (int i = 0; i < 90; i++) {
+                    for (Ents.Slime e : sl) e.vx = 0;
+                    step(1);
+                    if (i == 7 && upg == 0) shot("cash_" + nm[h]);
+                }
+                for (int k = 0; k < sl.size(); k++) hit.append(spots[k][0] > 0 ? "+" : "").append((int) spots[k][0]).append(sl.get(k).dead || sl.get(k).hp <= 0 ? ":X " : ":- ");
+                System.out.println(String.format("%-10s upg=%d recharge=%.1fs  %s", nm[h], upg, p.rechargeTime / 60f, hit));
+                g.save.upgrades[h] = 0;
+            }
+        }
+    }
+
     static void look(int idx, int col) throws Exception {
         g.save.hero = 4;
         startLevel(idx);

@@ -38,7 +38,12 @@ Reattività dei comandi:
   verso il bordo o nell'angolo viene comunque preso. Anche un tocco brevissimo viene registrato e fa un salto vero.
 - **Levetta:** se tocchi il pad il personaggio parte subito. Se tocchi altrove a sinistra il pad si sposta sotto il dito.
   Il pad segue il dito, quindi per invertire la direzione basta un piccolo movimento.
-- **Vibrazione:** una breve vibrazione conferma ogni pressione (si può disattivare).
+- **Vibrazione:** una breve vibrazione conferma ogni pressione (si può disattivare). Non rallenta mai il tocco
+  successivo, perché gira su un thread a parte.
+- **Bordi dello schermo:** con la navigazione a gesti, Android tratteneva i tocchi vicino al bordo (il gesto "indietro")
+  e il tasto A a volte arrivava in ritardo. Ora la parte bassa dei due bordi è esclusa dai gesti.
+- **Pollice tra due tasti / tra le due frecce:** il tasto o la freccia tenuti restano quelli finché il dito non è
+  chiaramente sull'altro, quindi niente salti interrotti né corsa che si azzera.
 
 **Opzioni** (tasto B "MENU" sulla mappa, oppure ⏸ durante il livello): COMANDI levetta/frecce, VIBRAZIONE,
 MUSICA, EFFETTI, cambio personaggio.
@@ -55,7 +60,7 @@ Combinazioni comuni a tutti i personaggi:
 |---|---|---|
 | **Mattia Battaglia**: ricci scuri, pile ruggine e crema | **Pugno**: stende i nemici, spacca i mattoni, respinge i proiettili | **Super pugno**: onda d'urto enorme davanti a lui (danno 5 a tutti, 4 ai boss) |
 | **Giuseppe Mandanici**: occhiali verdi, barba, felpa terracotta | **Pistola**: 2 colpi ogni 10 secondi, danno 2 | **Scagnozzi**: due scagnozzi sparano ai nemici per 5,5 secondi |
-| **Francesco Inzerillo**: ricci neri, apparecchio, maglia crema | **Moneta d'oro**: dalla mano escono banconote e parte una moneta che rimbalza 3 volte smorzandosi e colpisce tutti i nemici che incontra (una ogni 3 s) | **Tocco di Re Mida**: diventa d'oro con la corona e una fontana di monete colpisce tutto per 3 s; ogni nemico colpito dà una moneta |
+| **Francesco Inzerillo**: ricci neri, apparecchio, maglia crema | **Moneta d'oro**: un'esplosione di **banconote taglienti** colpisce tutti i nemici vicini (circa 3 blocchi davanti e 2 dietro, 1 danno, distrugge anche i proiettili), poi una moneta rimbalza 3 volte e colpisce chi incontra (ogni 2,5 s) | **Tocco di Re Mida**: diventa d'oro con la corona e una fontana di monete colpisce tutto per 3 s; ogni nemico colpito dà una moneta |
 | **Andrea Sapienza**: frangia scura, maglia nera | **Mazza totem** (nera, a forma di persona): swing ogni secondo che rispedisce indietro palle di cannone e proiettili e scaglia via i nemici, che diventano proiettili | **Totem di fuoco**: il totem gigante appare sopra di lui e lancia palle di fuoco per 4,5 s |
 | **Paolo Zingales**: ciuffo, barba folta, maglia grigia | **Pallone**: calcio con 3 grandi rimbalzi, danno 2 (si ricarica in 2,5 s) | **Super tiro**: un pallone gigante va dritto e travolge nemici e mattoni (5 ai boss) |
 
@@ -67,7 +72,8 @@ La barra ★ in alto si riempie sconfiggendo nemici (+12, golem +25), raccoglien
 i boss (+8). Quando è piena il tasto **SPECIALE** lampeggia. Morendo si conserva metà dell'energia.
 
 ### Power-up
-Nei blocchi ci sono **fiori di fuoco** e **fiori di ghiaccio**:
+Nei blocchi ci sono **fiori di fuoco** e **fiori di ghiaccio**. Come i cuori, escono dal blocco e camminano
+(nella direzione in cui guarda il personaggio), quindi si prendono senza salire sul blocco:
 - **Fuoco**: l'abilità diventa infuocata (+1 danno; il pugno e la mazza lanciano anche una palla di fuoco).
 - **Ghiaccio**: l'abilità congela i nemici, che diventano blocchi di ghiaccio innocui da frantumare; i boss vengono rallentati.
 
@@ -80,7 +86,7 @@ comunque una vita.
 |---|---|---|
 | Mattia | Doppio pugno (due pugni di fila) | Pugno rapido e più lungo |
 | Giuseppe | 3 colpi ogni 10 s | 4 colpi ogni 10 s |
-| Francesco | 2 monete pronte | Ricarica in 2 s |
+| Francesco | 2 monete pronte | Ricarica in 1,7 s, più banconote e più lontano |
 | Andrea | Mazza pesante: più grande, 2 danni ai boss | Swing ogni 0,6 s |
 | Paolo | 2 palloni pronti | Tiro potente: 5 rimbalzi, più veloce |
 
@@ -178,6 +184,11 @@ java -cp /tmp/pq it.pixelquest.desktop.Sim /tmp/shots bot      # verifica che og
 java -cp /tmp/pq it.pixelquest.desktop.Sim /tmp/shots fuzz 4000
 java -cp /tmp/pq it.pixelquest.desktop.Sim /tmp/shots controls  # test di reattività dei comandi touch
 ```
-Il bot esplora ogni livello con la vera fisica del gioco (corse, salti, wall jump, tripli salti, piattaforme)
-sui 16 livelli del prologo. I 18 livelli di Unipa vengono validati dal generatore e dal fuzzing, ma non sono ancora
-stati provati a mano.
+Il bot esplora ogni livello con la vera fisica del gioco (corse, salti, wall jump, tripli salti, piattaforme, molle,
+blocchi A/B a tempo) e verifica che si possa arrivare al traguardo e prendere le gemme, anche con i personaggi che
+saltano meno (Mattia) e corrono più piano (Andrea). Non dice niente sulla difficoltà: quella va provata a mano.
+```bash
+java -DbotFrom=16 -DbotHero=3 -DbotHeroes=5 -cp /tmp/pq it.pixelquest.desktop.Sim /tmp/shots bot   # Unipa con Andrea
+java -cp /tmp/pq it.pixelquest.desktop.Sim /tmp/shots maptest   # la mappa avanza di un nodo a ogni pressione
+java -cp /tmp/pq it.pixelquest.desktop.Sim /tmp/shots cash      # banconote di Francesco contro il pallone di Paolo
+```

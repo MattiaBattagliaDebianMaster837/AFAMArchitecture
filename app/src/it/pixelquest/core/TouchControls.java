@@ -22,8 +22,12 @@ public final class TouchControls {
     private final int[] pid = new int[MAXP];
     private final float[] px = new float[MAXP], py = new float[MAXP];
     private final int[] role = new int[MAXP]; // 1 move, 2 buttons, 3 pause
+    private final int[] held = new int[MAXP]; // button currently held by a role-2 finger
     private final boolean[] used = new boolean[MAXP];
     private final ArrayList<float[]> pendingTaps = new ArrayList<>();
+    private final ArrayList<float[]> pendingReleases = new ArrayList<>();
+    private final float[] downX = new float[MAXP], downY = new float[MAXP], moved = new float[MAXP];
+    private final long[] downNs = new long[MAXP];
     // presses that happened since the last poll (kept even if the finger was already lifted)
     private boolean pendA, pendB, pendC, pendS, pendPause;
     private int pendMoveDir;
@@ -40,7 +44,11 @@ public final class TouchControls {
     public boolean visible = true;
     public boolean stickActive;
     public float baseX, baseY, knobX, knobY;
+    /** Touches since the last poll: {x, y, onControl}. onControl is 1 when the finger landed on a visible
+     *  control (arrows, pad, buttons, pause): screens that react to taps (the map) must ignore those. */
     public final ArrayList<float[]> taps = new ArrayList<>();
+    /** Real taps (finger lifted quickly without dragging), with the same {x, y, onControl} layout. */
+    public final ArrayList<float[]> releaseTaps = new ArrayList<>();
     public boolean anyTouch;
     // arrows
     public int arrowDir;
@@ -60,33 +68,65 @@ public final class TouchControls {
         return H - 50;
     }
 
+    // control geometry, cached (no allocation per frame); recomputed when the virtual screen size changes
+    private final float[] gA = new float[3], gB = new float[3], gC = new float[3], gS = new float[3], gP = new float[3],
+            gL = new float[4], gR = new float[4];
+    private int geoW = -1, geoH = -1;
+
+    private void geo() {
+        if (geoW == W && geoH == H) return;
+        geoW = W;
+        geoH = H;
+        set(gA, W - 40, H - 48, 24);
+        set(gB, W - 96, H - 34, 20);
+        set(gC, W - 84, H - 98, 19);
+        set(gS, W - 146, H - 84, 17);
+        set(gP, W - 16, 14, 11);
+        gL[0] = 34; gL[1] = H - 46; gL[2] = 27; gL[3] = 25;
+        gR[0] = 98; gR[1] = H - 46; gR[2] = 27; gR[3] = 25;
+    }
+
+    private static void set(float[] a, float x, float y, float r) {
+        a[0] = x;
+        a[1] = y;
+        a[2] = r;
+    }
+
+    /** {cx, cy, radius}; the returned arrays are shared, do not modify them. */
     public float[] btnA() {
-        return new float[]{W - 40, H - 48, 24};
+        geo();
+        return gA;
     }
 
     public float[] btnB() {
-        return new float[]{W - 96, H - 34, 20};
+        geo();
+        return gB;
     }
 
     public float[] btnC() {
-        return new float[]{W - 84, H - 98, 19};
+        geo();
+        return gC;
     }
 
     public float[] btnS() {
-        return new float[]{W - 146, H - 84, 17};
+        geo();
+        return gS;
     }
 
     public float[] btnPause() {
-        return new float[]{W - 16, 14, 11};
+        geo();
+        return gP;
     }
 
     /** Left / right arrow buttons: {cx, cy, halfW, halfH}. */
     public float[] arrowL() {
-        return new float[]{34, H - 46, 27, 25};
+        geo();
+        return gL;
     }
 
     public float[] arrowR() {
-        return new float[]{98, H - 46, 27, 25};
+        geo();
+        return gR;
     }
 
     private float moveZone() {
@@ -100,6 +140,15 @@ public final class TouchControls {
 
     /** Which action button a point on the right side belongs to (nearest button, generous reach). */
     private int buttonAt(float x, float y) {
+        return buttonAt(x, y, NONE);
+    }
+
+    /**
+     * Same, with hysteresis for a finger that is already holding {@code cur}: a thumb resting on the border
+     * between two buttons must not flicker between them (that released A for a frame, cutting jumps short
+     * and re-triggering presses). The held button is kept until another one is clearly nearer.
+     */
+    private int buttonAt(float x, float y, int cur) {
         float[] A = btnA(), B = btnB(), C = btnC(), S = btnS();
         float dA = dist(x, y, A[0], A[1]) / A[2];
         float dB = dist(x, y, B[0], B[1]) / B[2];
@@ -108,11 +157,32 @@ public final class TouchControls {
         float best = Math.min(Math.min(dA, dB), Math.min(dC, dS));
         // anything in the lower right area counts, even right at the screen edge / corner
         boolean lowerRight = y > H * 0.45f && x > W * 0.55f;
-        if (best > 2.8f && !lowerRight) return NONE;
+        if (best > (cur != NONE ? 3.2f : 2.8f) && !lowerRight) return NONE;
+        if (cur != NONE) {
+            float dCur = cur == BTN_A ? dA : cur == BTN_B ? dB : cur == BTN_C ? dC : cur == BTN_S ? dS : 999;
+            if (dCur < 999 && dCur <= best * 1.4f + 0.15f) return cur;
+        }
         if (best == dA) return BTN_A;
         if (best == dB) return BTN_B;
         if (best == dS) return BTN_S;
         return BTN_C;
+    }
+
+    private static boolean inCircle(float x, float y, float[] c, float margin) {
+        return dist(x, y, c[0], c[1]) < c[2] + margin;
+    }
+
+    /** True when (x, y) is on one of the visible controls. */
+    public boolean onControl(float x, float y) {
+        if (inCircle(x, y, btnPause(), 9) || inCircle(x, y, btnA(), 8) || inCircle(x, y, btnB(), 8) || inCircle(x, y, btnC(), 8))
+            return true;
+        if (showS && inCircle(x, y, btnS(), 8)) return true;
+        if (mode == ARROWS) {
+            float[] l = arrowL(), r = arrowR();
+            return Math.abs(x - l[0]) < l[2] + 8 && Math.abs(y - l[1]) < l[3] + 8
+                    || Math.abs(x - r[0]) < r[2] + 8 && Math.abs(y - r[1]) < r[3] + 8;
+        }
+        return dist(x, y, defBaseX(), defBaseY()) < STICK_R + 12;
     }
 
     private int arrowAt(float x) {
@@ -130,7 +200,11 @@ public final class TouchControls {
                 pid[i] = id;
                 px[i] = x;
                 py[i] = y;
-                pendingTaps.add(new float[]{x, y});
+                downX[i] = x;
+                downY[i] = y;
+                moved[i] = 0;
+                downNs[i] = System.nanoTime();
+                pendingTaps.add(new float[]{x, y, enabled && onControl(x, y) ? 1 : 0});
                 if (!enabled) {
                     role[i] = 0;
                     return NONE;
@@ -145,6 +219,7 @@ public final class TouchControls {
                     role[i] = 1;
                     if (mode == ARROWS) {
                         pendMoveDir = arrowAt(x);
+                        held[i] = pendMoveDir;
                     } else {
                         // touching the visible pad keeps it in place (instant direction);
                         // elsewhere the pad jumps under the finger
@@ -160,6 +235,7 @@ public final class TouchControls {
                 }
                 role[i] = 2;
                 int bt = buttonAt(x, y);
+                held[i] = bt;
                 if (bt == BTN_A) pendA = true;
                 else if (bt == BTN_B) pendB = true;
                 else if (bt == BTN_C) pendC = true;
@@ -174,6 +250,7 @@ public final class TouchControls {
             if (used[i] && pid[i] == id) {
                 px[i] = x;
                 py[i] = y;
+                moved[i] = Math.max(moved[i], dist(x, y, downX[i], downY[i]));
                 if (role[i] == 1 && mode == STICK) {
                     // the base follows the finger beyond the rim: reversing direction needs only a short move
                     float dx = x - baseX, dy = y - baseY;
@@ -189,11 +266,16 @@ public final class TouchControls {
 
     public synchronized void up(int id) {
         for (int i = 0; i < MAXP; i++)
-            if (used[i] && pid[i] == id) used[i] = false;
+            if (used[i] && pid[i] == id) {
+                used[i] = false;
+                if (moved[i] < 7 && System.nanoTime() - downNs[i] < 400_000_000L)
+                    pendingReleases.add(new float[]{downX[i], downY[i], enabled && onControl(downX[i], downY[i]) ? 1 : 0});
+            }
     }
 
     public synchronized void cancelAll() {
         for (int i = 0; i < MAXP; i++) used[i] = false;
+        pendingReleases.clear();
         pendA = pendB = pendC = pendS = pendPause = false;
         pendMoveDir = 0;
     }
@@ -215,6 +297,9 @@ public final class TouchControls {
         taps.clear();
         taps.addAll(pendingTaps);
         pendingTaps.clear();
+        releaseTaps.clear();
+        releaseTaps.addAll(pendingReleases);
+        pendingReleases.clear();
         ax = ay = 0;
         a = pendA;
         b = pendB;
@@ -231,7 +316,12 @@ public final class TouchControls {
             if (role[i] == 1) {
                 stickActive = true;
                 if (mode == ARROWS) {
-                    dirNow = arrowAt(px[i]);
+                    // hysteresis: a thumb resting between the arrows must not flicker (that reset the auto-run)
+                    float mid = (arrowL()[0] + arrowR()[0]) / 2f;
+                    if (held[i] == 0) held[i] = arrowAt(px[i]);
+                    else if (held[i] < 0 && px[i] > mid + 10) held[i] = 1;
+                    else if (held[i] > 0 && px[i] < mid - 10) held[i] = -1;
+                    dirNow = held[i];
                 } else {
                     float dx = px[i] - baseX, dy = py[i] - baseY;
                     float d = (float) Math.sqrt(dx * dx + dy * dy);
@@ -247,7 +337,8 @@ public final class TouchControls {
                     if (Math.abs(ay) < 0.45f) ay = 0;
                 }
             } else if (role[i] == 2) {
-                int bt = buttonAt(px[i], py[i]);
+                int bt = buttonAt(px[i], py[i], held[i]);
+                held[i] = bt;
                 if (bt == BTN_A) a = true;
                 else if (bt == BTN_B) b = true;
                 else if (bt == BTN_C) c = true;
@@ -304,9 +395,8 @@ public final class TouchControls {
     }
 
     private void drawArrows(Gfx g) {
-        float[][] arr = {arrowL(), arrowR()};
         for (int k = 0; k < 2; k++) {
-            float[] r = arr[k];
+            float[] r = k == 0 ? arrowL() : arrowR();
             int dir = k == 0 ? -1 : 1;
             boolean on = arrowDir == dir;
             boolean running = on && arrowHeld >= ARROW_RUN_FRAMES;

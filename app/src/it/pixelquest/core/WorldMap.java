@@ -72,7 +72,9 @@ public final class WorldMap {
                 game.openSelect();
                 return;
             }
-            for (float[] tp : tc.taps) {
+            for (float[] tp : tc.releaseTaps) {
+                // only real taps (no drag) count, and a finger on the arrows / pad / buttons is not a tap on the map
+                if (tp.length > 2 && tp[2] != 0) continue;
                 float mx = tp[0] + cam, my = tp[1];
                 for (int i = 0; i <= game.save.unlocked && i < NODES.length; i++) {
                     float dx = mx - NODES[i][0], dy = my - NODES[i][1];

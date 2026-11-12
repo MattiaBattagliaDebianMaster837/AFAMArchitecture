@@ -70,7 +70,7 @@ public final class Player extends Entity {
                 break;
             case Hero.COIN:
                 maxCharges = upg >= 1 ? 2 : 1;
-                rechargeTime = upg >= 2 ? 120 : 180;
+                rechargeTime = upg >= 2 ? 100 : 150;
                 break;
             case Hero.BAT:
                 cdTime = upg >= 2 ? 36 : 60;
@@ -167,10 +167,11 @@ public final class Player extends Entity {
         if (vx != 0) lastVxSign = vx > 0 ? 1 : -1;
 
         // ---------------------------------------------------------------- jumps
-        if (in.aP) jumpBuf = 7;
-        if (in.bP) spinBuf = 7;
+        // generous buffers: a press slightly before landing / just after leaving a ledge still jumps
+        if (in.aP) jumpBuf = 9;
+        if (in.bP) spinBuf = 9;
         if (onGround) {
-            coyote = 6;
+            coyote = 7;
             if (chainWindow > 0) chainWindow--;
             else chain = 0;
         } else if (coyote > 0) coyote--;
@@ -340,8 +341,8 @@ public final class Player extends Entity {
                 charges--;
                 actT = 14;
                 L.spawn(Combat.PShot.coin(cx() + facing * 8, y + 6, facing, vx, power));
-                for (int k = 0; k < 3; k++)
-                    L.spawn(new Combat.Banknote(cx() + facing * 6, y + 6, facing * (0.6f + k * 0.5f), -1.6f - k * 0.5f));
+                // the banknotes are a real attack: they cut every enemy around him
+                Combat.PShot.cashBurst(L, cx() + facing * 4, y + 9, facing, power, upg);
                 Sfx.play(Sfx.COIN);
                 break;
             case Hero.BAT:

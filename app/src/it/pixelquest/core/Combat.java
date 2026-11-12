@@ -43,13 +43,14 @@ public final class Combat {
     // ============================================================ projectiles
     public static final class PShot extends Entity {
         public static final int BULLET = 0, COIN = 1, BALL = 2, ORB = 3, HENCH = 4, FOUNTAIN = 5, GIANT = 6, REFLECT = 7,
-                BATTED = 8, TOTEM = 9;
+                BATTED = 8, TOTEM = 9, CASH = 10;
         final int kind;
         int element, dmg, bossDmg, bounces, life, pierce = 99;
         float grv, spin;
         boolean force, breaksBricks, wallBounce, groundBounce;
         Sprite spr;
-        final ArrayList<Entity> hitList = new ArrayList<>();
+        ArrayList<Entity> hitList = new ArrayList<>();
+        float drag = 1f, rot;
         int trail;
 
         PShot(int kind, float cx, float cy, float vx, float vy, Sprite spr, int hw, int hh) {
@@ -144,6 +145,34 @@ public final class Combat {
             return s;
         }
 
+        /**
+         * Francesco's burst of banknotes: they fly out around him, slow down quickly and cut every enemy (and enemy
+         * shot) they touch. The notes of one throw share a hit list, so each enemy is hit once per throw.
+         */
+        public static void cashBurst(Level L, float cx, float cy, int dir, int element, int upg) {
+            ArrayList<Entity> shared = new ArrayList<>();
+            float sp = upg >= 2 ? 6.0f : 5.3f;
+            // forward fan (degrees from straight ahead, negative = upwards) + some behind to cover his back
+            float[] fwd = upg >= 2 ? new float[]{-72, -50, -30, -12, 3, 13} : new float[]{-66, -38, -15, 2, 12};
+            float[] back = upg >= 2 ? new float[]{-35, -8, 8} : new float[]{-20, 6};
+            for (int k = 0; k < fwd.length + back.length; k++) {
+                boolean behind = k >= fwd.length;
+                double a = Math.toRadians(behind ? back[k - fwd.length] : fwd[k]);
+                float s = behind ? sp * 0.8f : sp;
+                float vx = (float) Math.cos(a) * s * (behind ? -dir : dir), vy = (float) Math.sin(a) * s;
+                PShot p = new PShot(CASH, cx, cy, vx, vy, Art.banknote, 10, 7);
+                p.element = element;
+                p.dmg = 1;
+                p.bossDmg = 1;
+                p.life = upg >= 2 ? 30 : 26;
+                p.drag = 0.92f;
+                p.grv = 0.02f;
+                p.hitList = shared;
+                p.rot = k * 0.9f;
+                L.spawn(p);
+            }
+        }
+
         public static PShot giant(float cx, float cy, int dir) {
             PShot s = new PShot(GIANT, cx, cy, 5f * dir, 0, Art.giantBall, 28, 28);
             s.dmg = 6;
@@ -183,6 +212,11 @@ public final class Combat {
                 return;
             }
             if (kind == ORB) spr = elemSprite(element, t);
+            if (drag != 1f) {
+                vx *= drag;
+                vy *= drag;
+                rot += 0.25f + Math.abs(vx) * 0.05f;
+            }
             if (kind == TOTEM && t % 3 == 0) L.spawn(new Ember(cx(), cy(), 0xFFFF9A2A));
             if (element != NONE && t % 4 == 0 && kind != ORB) L.spawn(new Ember(cx(), cy(), element == ICE ? 0xFFBFF0FF : 0xFFFF9A2A));
             vy += grv;
@@ -200,7 +234,7 @@ public final class Combat {
                         vx = -vx * 0.9f;
                         facing = -facing;
                     } else {
-                        L.spawn(new Ents.Impact(vx > 0 ? c * T : c * T + T, cy()));
+                        if (kind != CASH) L.spawn(new Ents.Impact(vx > 0 ? c * T : c * T + T, cy()));
                         vanish();
                         return;
                     }
@@ -248,7 +282,9 @@ public final class Combat {
                     hitList.add(e);
                     L.spawn(new Ents.Impact(cx(), cy()));
                     if (kind == COIN || kind == FOUNTAIN) Sfx.play(Sfx.COIN);
-                    else Sfx.play(Sfx.HIT);
+                    else if (kind == CASH) {
+                        if (!e.projectile) Sfx.play(Sfx.HIT);
+                    } else Sfx.play(Sfx.HIT);
                     if (kind == FOUNTAIN && !e.boss) L.addCoin(1);
                     if (--pierce < 0) {
                         vanish();
@@ -261,7 +297,8 @@ public final class Combat {
 
         void vanish() {
             dead = true;
-            if (kind == COIN || kind == FOUNTAIN) L.spawn(new Ents.Sparkle(cx(), cy()));
+            if (kind == CASH) L.spawn(new Banknote(x, y, vx * 0.5f, vy * 0.5f - 0.4f)); // flutters away harmlessly
+            else if (kind == COIN || kind == FOUNTAIN) L.spawn(new Ents.Sparkle(cx(), cy()));
             else if (kind == BATTED || kind == GIANT || kind == BALL) L.spawn(new Ents.Puff(cx(), cy()));
         }
 
@@ -271,6 +308,10 @@ public final class Combat {
             if (element != NONE && kind != ORB)
                 g.circle((int) px, (int) py, Math.max(w, h) / 2 + 3, element == ICE ? 0xFF8AE0FF : 0xFFFF8A2A, 90);
             switch (kind) {
+                case CASH:
+                    g.blitEx(spr, px, py, 1, Math.max(0.3f, Math.abs((float) Math.cos(rot))), (float) Math.sin(rot) * 0.5f, false,
+                            life < 6 ? life * 40 : 255, element == FIRE && t % 4 < 2 ? 0xFFFFA040 : element == ICE && t % 4 < 2 ? 0xFFBFF0FF : 0);
+                    break;
                 case COIN:
                 case FOUNTAIN: {
                     float sx = (float) Math.cos(t * 0.45);

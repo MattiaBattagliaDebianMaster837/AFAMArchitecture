@@ -16,6 +16,9 @@ public final class Bot {
     final List<Entity> keep;
     int sims;
     int[] bricks;
+    /** level has blocks that appear / disappear on a timer: the time matters for the search */
+    final boolean timed;
+    boolean hasSpring;
 
     public Bot(Game game, int levelIndex, int hero) {
         this.game = game;
@@ -32,6 +35,16 @@ public final class Bot {
         bricks = new int[bl.size()];
         for (int i = 0; i < bricks.length; i++) bricks[i] = bl.get(i);
         if (L.bossEnt != null) L.bossEnt = null;
+        boolean tm = false;
+        for (byte t : L.tiles) if (t == Level.TIMED_A || t == Level.TIMED_B) tm = true;
+        timed = tm;
+        for (Entity e : keep) if (e instanceof Ents.Spring) hasSpring = true;
+        // optional start position (to check the second half of a level on its own)
+        Integer sc = Integer.getInteger("botStartCol"), sr = Integer.getInteger("botStartRow");
+        if (sc != null && sr != null) {
+            L.player.x = sc * Level.T + 2;
+            L.player.y = sr * Level.T - L.player.h;
+        }
     }
 
     // ------------------------------------------------------------ snapshots
@@ -114,18 +127,19 @@ public final class Bot {
     static final class Act {
         int dir, wait, prerun, hold;
         float speed;
-        boolean spin, wallClimb, triple, releaseAfterTakeoff, reverseAir, alternate;
+        boolean spin, wallClimb, triple, releaseAfterTakeoff, reverseAir, alternate, springTurn;
 
         public String toString() {
             return "dir=" + dir + " spd=" + speed + " wait=" + wait + " pre=" + prerun + " hold=" + hold + (spin ? " spin" : "")
-                    + (wallClimb ? " wall" : "") + (triple ? " triple" : "") + (releaseAfterTakeoff ? " rel" : "") + (reverseAir ? " rev" : "");
+                    + (wallClimb ? " wall" : "") + (triple ? " triple" : "") + (releaseAfterTakeoff ? " rel" : "") + (reverseAir ? " rev" : "")
+                + (springTurn ? " springTurn" : "");
         }
     }
 
     List<Act> actions(boolean nearPlatform) {
         List<Act> list = new ArrayList<>();
         int[] holds = {0, 5, 12, 40, 90};
-        int[] waits = nearPlatform ? new int[]{0, 30, 60, 90, 120, 150, 180, 210} : new int[]{0};
+        int[] waits = nearPlatform || timed ? new int[]{0, 30, 60, 90, 120, 150, 180, 210, 240, 270} : new int[]{0};
         for (int dir = -1; dir <= 1; dir += 2)
             for (int w : waits)
                 for (float sp : new float[]{0.6f, 1f})
@@ -138,6 +152,12 @@ public final class Bot {
                             a.prerun = pre;
                             a.hold = h;
                             list.add(a);
+                            if (h == 90 && hasSpring) {
+                                // hop onto a spring, then steer the other way during the bounce
+                                Act st = copy(a);
+                                st.springTurn = true;
+                                list.add(st);
+                            }
                             if (h == 40) {
                                 Act b = copy(a);
                                 b.wallClimb = true;
@@ -208,7 +228,12 @@ public final class Bot {
         int holdLeft = act.hold;
         boolean prevA = false;
         int curDir = act.dir;
+        boolean turned = false;
         while (total++ < 260) {
+            if (act.springTurn && !turned && p.vy < -7f) {
+                curDir = -curDir;
+                turned = true;
+            }
             float ax = curDir * act.speed;
             boolean a = false;
             if (act.hold > 0) {
@@ -259,7 +284,8 @@ public final class Bot {
         String base = r.isEmpty() ? ((int) (p.x / 12)) + "," + ((int) (p.y / 12)) : r + ":" + ((int) (p.x / 24));
         int broken = 0;
         for (int i = 0; i < bricks.length; i++) if (L.tiles[bricks[i]] != Level.BRICK) broken++;
-        return base + "|" + Math.min(broken, 3);
+        String ph = timed ? "|t" + (L.frame % (2 * Level.PHASE)) / 25 : "";
+        return base + "|" + Math.min(broken, 3) + ph;
     }
 
     static float score(State s, boolean vertical) {
@@ -281,7 +307,7 @@ public final class Bot {
         HashSet<String> seen = new HashSet<>();
         q.add(new State());
         seen.add(key(L.player));
-        float bestX = L.player.x;
+        float bestX = L.player.x, bestY = L.player.y;
         int arenaX = L.arenaCol >= 0 ? (L.arenaCol + 1) * Level.T : -1;
         int nodes = 0;
         boolean hasPlat = false;
@@ -315,10 +341,11 @@ public final class Bot {
                 if (seen.add(k)) {
                     q.add(new State());
                     bestX = Math.max(bestX, p.x);
+                    bestY = Math.min(bestY, p.y);
                 }
             }
         }
         String gemsStr = L.gemCount == 0 ? "" : " gems=" + Integer.bitCount(gemsFound & allGems) + "/" + L.gemCount;
-        return (finished ? "FINISHED" + " gemMask=" + gemsFound + " " : "STUCK furthest col " + (int) (bestX / 16) + "/" + L.tw) + gemsStr + " nodes=" + nodes;
+        return (finished ? "FINISHED" + " gemMask=" + gemsFound + " " : "STUCK furthest col " + (int) (bestX / 16) + "/" + L.tw + " top row " + (int) (bestY / 16) + "/" + L.th) + gemsStr + " nodes=" + nodes;
     }
 }

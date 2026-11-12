@@ -19,14 +19,25 @@ public final class Audio {
         Sfx.init(this);
     }
 
-    public synchronized void music(int id) {
-        if (id == currentTrack) return;
+    public void music(int id) {
+        synchronized (this) {
+            if (id == currentTrack) return;
+        }
+        // rendering a track can take a while the first time: never hold the mixer lock meanwhile,
+        // or the audio thread (and whoever plays a sound) would stall
+        short[] pcm = id < 0 ? null : Music.get(id);
+        synchronized (this) {
+            setMusic(id, pcm);
+        }
+    }
+
+    private void setMusic(int id, short[] pcm) {
         currentTrack = id;
         if (id < 0) {
             music = null;
             return;
         }
-        music = Music.get(id);
+        music = pcm;
         musicPos = 0;
         musicLoop = Music.loops(id);
         musicLoopStart = 0;

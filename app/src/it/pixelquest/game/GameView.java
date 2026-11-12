@@ -11,6 +11,9 @@ import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
 import android.os.Build;
+import android.os.Handler;
+import android.os.HandlerThread;
+import android.os.Process;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.view.MotionEvent;
@@ -21,6 +24,9 @@ import it.pixelquest.core.Audio;
 import it.pixelquest.core.Game;
 import it.pixelquest.core.Save;
 import it.pixelquest.core.TouchControls;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Hosts the platform-independent {@link Game}: runs a fixed 60 Hz update loop on its own thread,
@@ -39,6 +45,17 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
     private int surfW, surfH;
     private AudioTrack track;
     private final Vibrator vibrator;
+    /** Vibration runs on its own thread: on many phones vibrate() is a slow system call, and doing it on the
+     *  UI thread at every press delayed the touch events that followed (laggy A button). */
+    private static Handler hapticHandler;
+    private volatile boolean hapticPending;
+    private final Runnable hapticRun = new Runnable() {
+        public void run() {
+            hapticPending = false;
+            doBuzz();
+        }
+    };
+    private final List<Rect> exclusion = new ArrayList<>();
 
     public GameView(Context ctx) {
         super(ctx);
@@ -53,6 +70,13 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
         } catch (Throwable ignored) {
         }
         vibrator = v;
+        synchronized (GameView.class) {
+            if (hapticHandler == null) {
+                HandlerThread ht = new HandlerThread("haptics");
+                ht.start();
+                hapticHandler = new Handler(ht.getLooper());
+            }
+        }
         paint.setFilterBitmap(false);
         paint.setAntiAlias(false);
         paint.setDither(false);
@@ -99,6 +123,31 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
             }
         }
         startThreads();
+    }
+
+    @Override
+    protected void onLayout(boolean changed, int l, int t, int r, int b) {
+        super.onLayout(changed, l, t, r, b);
+        updateGestureExclusion(r - l, b - t);
+    }
+
+    /**
+     * With gesture navigation, touches near the left/right screen edges are held back by the system while it
+     * decides whether they are a "back" swipe: the A button (bottom right) and the arrows (bottom left) sit right
+     * there, so presses were sometimes delivered late or swallowed. Exclude the bottom part of both edges
+     * (Android honours up to 200dp per edge).
+     */
+    private void updateGestureExclusion(int w, int h) {
+        if (Build.VERSION.SDK_INT < 29 || w <= 0 || h <= 0) return;
+        try {
+            float dp = getResources().getDisplayMetrics().density;
+            int ex = Math.min(h, (int) (199 * dp));
+            exclusion.clear();
+            exclusion.add(new Rect(0, h - ex, w / 3, h));
+            exclusion.add(new Rect(w - w / 3, h - ex, w, h));
+            setSystemGestureExclusionRects(exclusion);
+        } catch (Throwable ignored) {
+        }
     }
 
     @Override
@@ -166,6 +215,10 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
 
     // ------------------------------------------------------------- game loop
     private void gameLoop() {
+        try {
+            Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_DISPLAY);
+        } catch (Throwable ignored) {
+        }
         final long step = 1_000_000_000L / 60;
         long last = System.nanoTime(), acc = 0;
         SurfaceHolder holder = getHolder();
@@ -229,6 +282,10 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
     // ------------------------------------------------------------- audio
     @SuppressWarnings("deprecation")
     private void audioLoop() {
+        try {
+            Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO);
+        } catch (Throwable ignored) {
+        }
         int rate = Audio.RATE;
         int min = AudioTrack.getMinBufferSize(rate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT);
         int bufBytes = Math.max(min, 2048 * 2);
@@ -257,10 +314,15 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
         track = null;
     }
 
-    /** Very short tick of vibration so presses are felt immediately. */
-    @SuppressWarnings("deprecation")
+    /** Very short tick of vibration so presses are felt immediately (never blocks the UI thread). */
     private void buzz() {
-        if (vibrator == null) return;
+        if (vibrator == null || hapticPending || hapticHandler == null) return;
+        hapticPending = true;
+        hapticHandler.post(hapticRun);
+    }
+
+    @SuppressWarnings("deprecation")
+    private void doBuzz() {
         try {
             if (Build.VERSION.SDK_INT >= 26) vibrator.vibrate(VibrationEffect.createOneShot(12, 90));
             else vibrator.vibrate(12);
@@ -278,6 +340,9 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
         float s = scale;
         switch (action) {
             case MotionEvent.ACTION_DOWN:
+                // deliver this gesture's events as soon as they arrive instead of batching them to the next frame
+                requestUnbufferedDispatch(e);
+                // fall through
             case MotionEvent.ACTION_POINTER_DOWN: {
                 int hit = g.touch.down(e.getPointerId(idx), (e.getX(idx) - offX) / s, (e.getY(idx) - offY) / s);
                 boolean button = hit == TouchControls.BTN_A || hit == TouchControls.BTN_B || hit == TouchControls.BTN_C || hit == TouchControls.BTN_S
