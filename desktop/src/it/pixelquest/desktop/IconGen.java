@@ -24,13 +24,18 @@ public class IconGen {
             Sprite c = th.cloud;
             stamp(bg, c, 6 + i * 52, 10 + i * 12);
         }
+        int[] confetti = {0xFFFF4A6A, 0xFF4AE0FF, 0xFFFFE04A, 0xFFB07AFF, 0xFFFFA03A, 0xFF7CFF5A};
+        for (int k = 0; k < 26; k++) { // party confetti in the sky
+            int x = (k * 37 + 11) % 104, y = (k * 23 + 5) % 70;
+            bg.set(x, y, confetti[k % confetti.length]);
+            bg.set(x + 1, y, confetti[k % confetti.length]);
+        }
         Png.save(bg, 4, dir + "/ic_bg.png");
 
-        // foreground: both hero heads inside the safe zone (centre 66dp)
+        // foreground: the five heroes' heads inside the safe zone (centre 66dp): Francesco and Andrea behind,
+        // Giuseppe, Mattia and Paolo in front
         Sprite fg = new Sprite(108, 108);
-        Sprite m = Hero.ALL[0].icon.scaled(2), g = Hero.ALL[1].icon.scaled(2);
-        stamp(fg, m, 54 - m.w + 2, 54 - m.h / 2 + 4);
-        stamp(fg, g, 54 - 2, 54 - g.h / 2 + 4);
+        group(fg, 2, 54, 56);
         Png.save(fg, 4, dir + "/ic_fg.png");
 
         // legacy icon 48x48 at 4x = 192
@@ -41,15 +46,29 @@ public class IconGen {
                 boolean corner = cornerCut(x, y, 48, 7);
                 if (!corner) leg.set(x, y, bg.get(bx, by));
             }
-        Sprite mm = Hero.ALL[0].icon, gg = Hero.ALL[1].icon;
-        stamp(leg, mm, 24 - mm.w + 1, 24 - mm.h / 2 + 3);
-        stamp(leg, gg, 24 - 1, 24 - gg.h / 2 + 3);
+        group(leg, 1, 24, 25);
         Png.save(leg, 4, dir + "/ic_launcher.png");
         // a large preview for the README
         Sprite prev = new Sprite(108, 108);
         stamp(prev, bg, 0, 0);
         stamp(prev, fg, 0, 0);
         Png.save(prev, 3, dir + "/icon_preview.png");
+    }
+
+    /** All five heads in a little group centred on (cx, cy): two behind, three in front. */
+    static void group(Sprite dst, int k, int cx, int cy) {
+        int[] back = {2, 3}, front = {1, 0, 4};
+        Sprite h0 = Hero.ALL[0].icon.scaled(k);
+        int w = h0.w, h = h0.h;
+        int stepB = w - 3 * k, stepF = w - 6 * k, lift = (int) (h * 0.62f);
+        for (int i = 0; i < back.length; i++) {
+            Sprite s = Hero.ALL[back[i]].icon.scaled(k);
+            stamp(dst, s, cx - stepB / 2 - w / 2 + i * stepB, cy - h / 2 - lift);
+        }
+        for (int i = 0; i < front.length; i++) {
+            Sprite s = Hero.ALL[front[i]].icon.scaled(k);
+            stamp(dst, s, cx - w / 2 + (i - 1) * stepF, cy - h / 2 + lift / 2);
+        }
     }
 
     static boolean cornerCut(int x, int y, int n, int r) {

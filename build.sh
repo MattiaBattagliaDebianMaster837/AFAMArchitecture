@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds release/PixelQuest.apk without the Android SDK / Gradle.
+# Builds release/Uniparty.apk (the game "Uniparty") without the Android SDK / Gradle.
 #
 # Toolchain (downloaded once from Maven Central into .deps/, verified by SHA-256):
 #   - Robolectric android-all (API 34)  -> android.jar to compile against
@@ -65,15 +65,15 @@ KS="$ROOT/keystore/pixelquest-debug.p12"
 if [ ! -f "$KS" ]; then
     mkdir -p "$ROOT/keystore"
     keytool -genkeypair -keystore "$KS" -storetype PKCS12 -storepass android -keypass android \
-        -alias pixelquest -keyalg RSA -keysize 2048 -validity 20000 -dname "CN=Pixel Quest" 2>&1 | quiet
+        -alias pixelquest -keyalg RSA -keysize 2048 -validity 20000 -dname "CN=Uniparty" 2>&1 | quiet
 fi
 javac -Xlint:-options -cp "$DEPS/apksig.jar" -d "$BUILD/tools" tools/ApkSign.java 2>&1 | quiet
 java --add-exports java.base/sun.security.x509=ALL-UNNAMED \
      --add-exports java.base/sun.security.pkcs=ALL-UNNAMED \
      --add-exports java.base/sun.security.util=ALL-UNNAMED \
-     -cp "$DEPS/apksig.jar:$BUILD/tools" ApkSign "$BUILD/unsigned.apk" "$BUILD/PixelQuest.apk" "$KS" android pixelquest 24 2>&1 | quiet
+     -cp "$DEPS/apksig.jar:$BUILD/tools" ApkSign "$BUILD/unsigned.apk" "$BUILD/Uniparty.apk" "$KS" android pixelquest 24 2>&1 | quiet
 
 mkdir -p release
-cp "$BUILD/PixelQuest.apk" release/PixelQuest.apk
-ls -l release/PixelQuest.apk
-echo "OK -> release/PixelQuest.apk"
+cp "$BUILD/Uniparty.apk" release/Uniparty.apk
+ls -l release/Uniparty.apk
+echo "OK -> release/Uniparty.apk"

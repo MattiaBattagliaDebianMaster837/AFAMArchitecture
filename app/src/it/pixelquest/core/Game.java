@@ -31,6 +31,7 @@ public final class Game {
     private int pauseCursor;
     private final WorldMap map;
     private Theme titleTheme;
+    private Sprite[][] titleHeroes;
 
     public Game(int w, int h, Save.Storage storage) {
         Hero.init();
@@ -498,24 +499,51 @@ public final class Game {
             g.blit(th.ground[1 | 2 | 8], ox, gy + 16);
             g.blit(th.ground[1 | 2 | 8], ox, gy + 32);
         }
-        // logo
-        int bob = (int) Math.round(Math.sin(frame * 0.05) * 3);
-        String t1 = "PIXEL", t2 = "QUEST";
-        g.textC(t1, W / 2 + 3, 26 + bob + 3, 0xFF3A1A08, 0xFF3A1A08, 5);
-        g.textC(t1, W / 2, 26 + bob, 0xFFFFD040, 0xFF5A2A08, 5);
-        g.textC(t2, W / 2 + 3, 66 + bob + 3, 0xFF3A1A08, 0xFF3A1A08, 5);
-        g.textC(t2, W / 2, 66 + bob, 0xFFFF7A3A, 0xFF5A1A08, 5);
-        g.textC("MATTIA & GIUSEPPE", W / 2, 112, 0xFFFFFFFF, 0xFF1A1A3A, 2);
-        // heroes running
-        for (int i = 0; i < 2; i++) {
-            Hero h = Hero.ALL[i];
-            Sprite s = h.frames[HeroArt.RUN0 + (frame / 5 + i * 2) % 4];
-            g.blit(s.scaled(2), W / 2 - 70 + i * 90, gy - 56 + (i == 0 ? 0 : 0));
+        // confetti: it's a party
+        int[] confetti = {0xFFFF4A6A, 0xFF4AE0FF, 0xFF7CFF5A, 0xFFFFE04A, 0xFFB07AFF, 0xFFFFA03A};
+        for (int k = 0; k < 34; k++) {
+            int sx = (int) ((k * 83 + frame * (0.4f + (k % 3) * 0.25f) + Math.sin((frame + k * 19) * 0.04) * 8) % W);
+            int sy = (int) ((k * 47 + frame * (0.7f + (k % 4) * 0.2f)) % (gy + 10));
+            boolean flat = ((frame / 6 + k) % 2) == 0;
+            g.fill(sx, sy, flat ? 3 : 1, flat ? 1 : 3, confetti[k % confetti.length]);
         }
-        // slime chasing for fun
-        g.blit(Art.slime[0][(frame / 12) % 2].scaled(2), W / 2 + 70, gy - 22);
+        // logo: UNI in Unipa gold and red, PARTY with dancing coloured letters
+        String logo = "UNIPARTY";
+        int sc = W >= 440 ? 6 : 5;
+        int adv = Font.ADV * sc;
+        int lx = W / 2 - Gfx.textW(logo, sc) / 2, ly = 16 + (int) Math.round(Math.sin(frame * 0.05) * 2);
+        int[] lc = {0xFFFFD040, 0xFFFFD040, 0xFFFFD040, 0xFFFF5A8A, 0xFF4AD8FF, 0xFF7CF05A, 0xFFFFA03A, 0xFFC08AFF};
+        for (int i = 0; i < logo.length(); i++) {
+            String ch = logo.substring(i, i + 1);
+            boolean party = i >= 3;
+            int dy = party ? (int) Math.round(Math.sin(frame * 0.12 + i * 0.9) * 3) : 0;
+            g.text(ch, lx + i * adv + 3, ly + dy + 4, 0xFF2A0A14, sc, 255);
+            g.textO(ch, lx + i * adv, ly + dy, lc[i], party ? 0xFF1A1440 : 0xFF8A1A2A, sc);
+        }
+        // graduation cap on the I of UNI
+        int capX = lx + 2 * adv + 2 * sc, capY = ly - 6;
+        g.fill(capX - 9, capY, 20, 3, 0xFF1A1A22);
+        g.fill(capX - 4, capY + 3, 10, 4, 0xFF1A1A22);
+        g.fill(capX + 9, capY + 1, 1, 7, 0xFFFFD040);
+        g.textC("MATTIA, GIUSEPPE, FRANCESCO, ANDREA E PAOLO", W / 2, ly + 7 * sc + 12, 0xFFFFFFFF, 0xFF1A1A3A, 1);
+        g.textC("DA CAPO D'ORLANDO ALLA LAUREA", W / 2, ly + 7 * sc + 26, 0xFFFFE070, 0xFF1A1A3A, 1);
+        // all the heroes running together, each one hopping now and then
+        int n = Hero.ALL.length, gap = Math.min(64, (W - 80) / n);
+        if (titleHeroes == null) titleHeroes = new Sprite[n][HeroArt.FRAMES];
+        for (int i = 0; i < n; i++) {
+            int phase = (frame + i * 29) % 150;
+            float hop = phase < 28 ? (float) Math.sin(phase / 28.0 * Math.PI) * 22 : 0;
+            int f = hop > 0 ? (phase < 14 ? HeroArt.JUMP : HeroArt.FALL) : HeroArt.RUN0 + (frame / 5 + i * 2) % 4;
+            if (titleHeroes[i][f] == null) titleHeroes[i][f] = Hero.ALL[i].frames[f].scaled(2);
+            Sprite s = titleHeroes[i][f];
+            int hx = W / 2 - (n * gap) / 2 + i * gap + (gap - s.w) / 2;
+            g.fillA(hx + 8, gy - 2, s.w - 16, 3, 0xFF000000, 60);
+            g.blit(s, hx, gy - s.h + 1 - (int) hop);
+        }
+        // a slime chasing them, for fun
+        g.blit(Art.slime[0][(frame / 12) % 2].scaled(2), W / 2 - (n * gap) / 2 - 44, gy - 22);
         if ((frame / 30) % 2 == 0) g.textC("TOCCA PER INIZIARE", W / 2, H - 14, 0xFFFFFFFF, 0xFF000000, 1);
-        g.text("V1.6", W - 28, H - 10, 0xFFFFFFFF, 1, 160);
+        g.text("V1.7", W - 28, H - 10, 0xFFFFFFFF, 1, 160);
     }
 
     private void renderSelect(Gfx g) {
@@ -760,7 +788,7 @@ public final class Game {
         }
         String[] lines = {"HAI SCONFITTO IL PROF. GIOVANNI GARBO", "E SEI USCITO DA UNIPA... CON LA LAUREA!",
                 "CAPO D'ORLANDO, PACECO, BARCELLONA E NASO FESTEGGIANO!", "",
-                "GEMME TROVATE: " + save.totalGems() + "/" + WorldMap.totalGems(), "GRAZIE PER AVER GIOCATO!"};
+                "GEMME TROVATE: " + save.totalGems() + "/" + WorldMap.totalGems(), "GRAZIE PER AVER GIOCATO A UNIPARTY!"};
         for (int i = 0; i < lines.length; i++) g.textC(lines[i], W / 2, 120 + i * 13, 0xFFFFFFFF, 0xFF000000, 1);
         for (int k = 0; k < 10; k++) { // confetti
             int sx = (int) ((k * 83 + frame * (1 + k % 3)) % W), sy = (int) ((k * 47 + frame * 2) % H);

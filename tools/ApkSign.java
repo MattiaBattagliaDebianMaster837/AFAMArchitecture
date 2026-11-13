@@ -32,7 +32,7 @@ public class ApkSign {
                 .setMinSdkVersion(minSdk)
                 .setV1SigningEnabled(minSdk < 24)
                 .setV2SigningEnabled(true)
-                .setCreatedBy("PixelQuest build")
+                .setCreatedBy("Uniparty build")
                 .build()
                 .sign();
 

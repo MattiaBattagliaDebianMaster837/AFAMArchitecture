@@ -1,14 +1,14 @@
-# Pixel Quest – Mattia & Giuseppe
+# Uniparty
 
-Un platform 2D in **pixel art** per **Android**, con mappa del mondo, **7 mondi, 34 livelli e 10 boss**.
+**Uniparty** è un platform 2D in **pixel art** per **Android**, con mappa del mondo, **7 mondi, 34 livelli e 10 boss**.
 È arrivata la lettera di ammissione all'Università di Palermo, ma prima c'è un **viaggio in quattro città siciliane**:
 **Capo d'Orlando**, **Paceco**, **Barcellona Pozzo di Gotto** (finita sotto il ghiaccio) e **Naso**. Poi comincia il
 **vero gioco**: 3 mondi all'**Università di Palermo (Unipa)**, dove ad aspettarti all'uscita c'è il **Prof. Giovanni Garbo**
 di Teoria dei Segnali, che con i suoi segnali aleatori ha messo sottosopra la Sicilia.
-Ci sono 5 personaggi giocabili, disegnati in pixel art a partire dalle loro foto: **Mattia Battaglia**, **Giuseppe Mandanici**,
+I protagonisti sono tutti e 5 i personaggi, disegnati in pixel art a partire dalle loro foto: **Mattia Battaglia**, **Giuseppe Mandanici**,
 **Francesco Inzerillo**, **Andrea Sapienza** e **Paolo Zingales**.
 
-**APK pronto da installare:** [`release/PixelQuest.apk`](release/PixelQuest.apk)
+**APK pronto da installare:** [`release/Uniparty.apk`](release/Uniparty.apk)
 
 | | |
 |---|---|
@@ -18,12 +18,14 @@ Ci sono 5 personaggi giocabili, disegnati in pixel art a partire dalle loro foto
 | ![Unipa - Parcheggio](docs/screenshots/unipa.png) | ![Prof. Garbo](docs/screenshots/garbo.png) |
 
 ## Installazione
-1. Copia `release/PixelQuest.apk` sul telefono (o scaricalo da GitHub).
+1. Copia `release/Uniparty.apk` sul telefono (o scaricalo da GitHub).
 2. Aprilo e consenti l'installazione da "origini sconosciute" se Android lo chiede.
 3. Richiede Android 7.0 o superiore. Il gioco è in orizzontale e a schermo intero.
 
 L'APK è firmato con una chiave di debug (`keystore/pixelquest-debug.p12`): le build successive
 fatte con `./build.sh` usano la stessa chiave, quindi si installano sopra la versione precedente.
+Il gioco prima si chiamava "Pixel Quest": il pacchetto interno (`it.pixelquest.game`) è rimasto lo stesso, quindi
+Uniparty si installa sopra la vecchia versione e i salvataggi restano.
 
 ## Comandi (touch)
 | Comando | Azione |
@@ -189,7 +191,7 @@ al volo (nessun file audio).
 ## Compilare
 Serve solo **JDK 17+**, **python3** e **curl** (non serve l'Android SDK né Gradle):
 ```bash
-./build.sh            # -> release/PixelQuest.apk
+./build.sh            # -> release/Uniparty.apk
 ```
 Lo script scarica (una volta, con verifica SHA-256) da Maven Central: `android-all` di Robolectric (API 34)
 per compilare, `dalvik-dx` per generare il `classes.dex` e `apksig` per la firma APK v2.
