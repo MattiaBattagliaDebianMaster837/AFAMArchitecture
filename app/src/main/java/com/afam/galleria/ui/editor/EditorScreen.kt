@@ -37,7 +37,7 @@ import androidx.compose.material.icons.rounded.Flip
 import androidx.compose.material.icons.rounded.InvertColors
 import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material.icons.rounded.PhotoFilter
-import androidx.compose.material.icons.rounded.RotateLeft
+import androidx.compose.material.icons.automirrored.rounded.RotateLeft
 import androidx.compose.material.icons.rounded.Thermostat
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Vignette
@@ -537,7 +537,7 @@ private fun CropTools(
                 .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            ToolButton(Icons.Rounded.RotateLeft, "Ruota", onRotate)
+            ToolButton(Icons.AutoMirrored.Rounded.RotateLeft, "Ruota", onRotate)
             Spacer(Modifier.width(8.dp))
             ToolButton(Icons.Rounded.Flip, "Rifletti", onFlip)
             Spacer(Modifier.weight(1f))

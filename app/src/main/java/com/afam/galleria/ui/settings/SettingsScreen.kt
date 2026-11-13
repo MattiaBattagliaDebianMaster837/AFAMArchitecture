@@ -18,12 +18,10 @@ import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.PhotoLibrary
-import androidx.compose.material.icons.outlined.Sort
+import androidx.compose.material.icons.automirrored.outlined.Sort
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -59,12 +57,9 @@ fun SettingsScreen(vm: GalleryViewModel) {
     val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
     var canManage by remember { mutableStateOf(vm.canManageMedia()) }
-    var refreshTick by remember { mutableIntStateOf(0) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         canManage = vm.canManageMedia()
-        refreshTick++
     }
-    LaunchedEffect(refreshTick) { }
 
     Box(
         Modifier
@@ -79,7 +74,7 @@ fun SettingsScreen(vm: GalleryViewModel) {
                 GroupedSection(header = "Libreria") {
                     ListRow(
                         title = "Più recenti in alto",
-                        icon = Icons.Outlined.Sort,
+                        icon = Icons.AutoMirrored.Outlined.Sort,
                         chevron = false,
                         trailing = { IosSwitch(local.newestFirst) { vm.setNewestFirst(it) } },
                     )

@@ -277,6 +277,7 @@ private fun ViewerContent(
 
         val t = transition
         val bgAlpha = when {
+            t == null && !opened -> 0f
             t == null -> 1f - dragFraction
             t.to == null && closing -> t.fromAlpha * (1f - progress.value)
             closing -> t.fromAlpha * (1f - progress.value)
@@ -297,7 +298,7 @@ private fun ViewerContent(
             userScrollEnabled = !zoomed && dragOffset == Offset.Zero,
             modifier = Modifier
                 .fillMaxSize()
-                .alpha(if (t == null) 1f else 0f),
+                .alpha(if (t == null && opened) 1f else 0f),
         ) { page ->
             val item = items[page]
             val isCurrent = page == pagerState.currentPage

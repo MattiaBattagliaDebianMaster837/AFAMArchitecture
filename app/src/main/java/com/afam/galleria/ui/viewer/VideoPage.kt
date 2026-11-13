@@ -26,8 +26,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.VolumeOff
-import androidx.compose.material.icons.rounded.VolumeUp
+import androidx.compose.material.icons.automirrored.rounded.VolumeOff
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -308,7 +308,7 @@ fun VideoPage(
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        if (muted) Icons.Rounded.VolumeOff else Icons.Rounded.VolumeUp,
+                        if (muted) Icons.AutoMirrored.Rounded.VolumeOff else Icons.AutoMirrored.Rounded.VolumeUp,
                         contentDescription = if (muted) "Attiva audio" else "Disattiva audio",
                         tint = Color.White,
                         modifier = Modifier.size(22.dp),
