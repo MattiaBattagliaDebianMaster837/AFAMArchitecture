@@ -5,6 +5,10 @@ public final class Theme {
     public static final int T = 16;
     public final int id;
     public final String name;
+    /** short form for banners ("BARCELLONA LIBERATA!") */
+    public final String shortName;
+    /** prologue worlds: backgrounds of the four towns */
+    private TownArt town;
     public Sprite[] ground = new Sprite[16];
     public Sprite stone, brick, used, spike, ice, gate, semiL, semiM, semiR, lavaBody;
     public Sprite[] qblock = new Sprite[4], lavaTop = new Sprite[2];
@@ -43,28 +47,28 @@ public final class Theme {
         switch (id) {
             default:
             case 0:
-                name = "PRATI PIXEL";
+                name = "CAPO D'ORLANDO";
                 dirt = 0xFFB4703C; dirtD = 0xFF8A4E28; dirtL = 0xFFD08E52;
                 cap = 0xFF5BC24A; capD = 0xFF2E8A34; capL = 0xFF9EE878;
                 brickC = 0xFFC0603A; stoneC = 0xFFA89C8C;
                 skyTop = 0xFF5AB8F0; skyBot = 0xFFCDEEFF; fogColor = 0xFF9FD8F8;
                 break;
             case 1:
-                name = "DESERTO DORATO";
+                name = "PACECO";
                 dirt = 0xFFE0A858; dirtD = 0xFFB87A38; dirtL = 0xFFF2C878;
                 cap = 0xFFF8DC98; capD = 0xFFD8B070; capL = 0xFFFFF2C8;
                 brickC = 0xFFD89A50; stoneC = 0xFFC8A070;
                 skyTop = 0xFFF08850; skyBot = 0xFFFFE6A8; fogColor = 0xFFF8C090;
                 break;
             case 2:
-                name = "PICCHI GHIACCIATI";
+                name = "BARCELLONA POZZO DI GOTTO";
                 dirt = 0xFF6A88B4; dirtD = 0xFF4A6290; dirtL = 0xFF8EAAD2;
                 cap = 0xFFF2F8FF; capD = 0xFFBCD4EE; capL = 0xFFFFFFFF;
                 brickC = 0xFF7AA0D0; stoneC = 0xFF9AB4D4;
                 skyTop = 0xFF1E2A64; skyBot = 0xFF8AA8E0; fogColor = 0xFF5070B0;
                 break;
             case 3:
-                name = "FORTEZZA DI LAVA";
+                name = "NASO";
                 dirt = 0xFF4A3A4C; dirtD = 0xFF30243A; dirtL = 0xFF6A5468;
                 cap = 0xFF7A5A6A; capD = 0xFF4A3444; capL = 0xFFB07A6A;
                 brickC = 0xFF6A4A5A; stoneC = 0xFF6A6478;
@@ -91,6 +95,7 @@ public final class Theme {
                 skyTop = 0xFF060818; skyBot = 0xFF2A1A48; fogColor = 0xFF1A1030;
                 break;
         }
+        shortName = id == 2 ? "BARCELLONA" : name;
         for (int m = 0; m < 16; m++) ground[m] = makeGround(m, dirt, dirtD, dirtL, cap, capD, capL);
         stone = makeStone(stoneC);
         brick = makeBrick(brickC);
@@ -485,7 +490,17 @@ public final class Theme {
     }
 
     /** Draw sky + parallax layers. */
+    /** Backgrounds of the prologue towns (worlds 0-3). */
+    TownArt town() {
+        if (town == null) town = new TownArt(this);
+        return town;
+    }
+
     public void drawBackground(Gfx g, float camX, float camY, int levelH, int frame) {
+        if (id <= 3) {
+            town().draw(g, camX, camY, levelH, frame, stage);
+            return;
+        }
         if (id == 5 || (id == 6 && stage <= 1)) {
             drawIndoor(g, camX, camY, levelH, frame);
             return;

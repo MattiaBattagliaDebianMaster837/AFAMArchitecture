@@ -1,8 +1,10 @@
 # Pixel Quest – Mattia & Giuseppe
 
 Un platform 2D in **pixel art** per **Android**, con mappa del mondo, **7 mondi, 34 livelli e 10 boss**.
-I primi 4 mondi sono il prologo. Poi comincia il **vero gioco**: 3 mondi all'**Università di Palermo (Unipa)**,
-dove ad aspettarti all'uscita c'è il **Prof. Giovanni Garbo** di Teoria dei Segnali.
+È arrivata la lettera di ammissione all'Università di Palermo, ma prima c'è un **viaggio in quattro città siciliane**:
+**Capo d'Orlando**, **Paceco**, **Barcellona Pozzo di Gotto** (finita sotto il ghiaccio) e **Naso**. Poi comincia il
+**vero gioco**: 3 mondi all'**Università di Palermo (Unipa)**, dove ad aspettarti all'uscita c'è il **Prof. Giovanni Garbo**
+di Teoria dei Segnali, che con i suoi segnali aleatori ha messo sottosopra la Sicilia.
 Ci sono 5 personaggi giocabili, disegnati in pixel art a partire dalle loro foto: **Mattia Battaglia**, **Giuseppe Mandanici**,
 **Francesco Inzerillo**, **Andrea Sapienza** e **Paolo Zingales**.
 
@@ -12,6 +14,7 @@ Ci sono 5 personaggi giocabili, disegnati in pixel art a partire dalle loro foto
 |---|---|
 | ![Titolo](docs/screenshots/titolo.png) | ![Scelta del personaggio](docs/screenshots/personaggi.png) |
 | ![Mappa](docs/screenshots/mappa.png) | ![Livello 1-1](docs/screenshots/livello.png) |
+| ![Le quattro città](docs/screenshots/citta.png) | ![La storia](docs/screenshots/storia.png) |
 | ![Unipa - Parcheggio](docs/screenshots/unipa.png) | ![Prof. Garbo](docs/screenshots/garbo.png) |
 
 ## Installazione
@@ -106,15 +109,24 @@ Alla fine di ogni livello compare il riepilogo: tempo, danni subiti, cadute, nem
 ## Mondi e livelli
 Ogni livello normale nasconde **3 gemme** (72 in totale). Il miglior grado di ogni livello appare sulla mappa.
 
-### Prologo (mondi 1-4)
-Ogni mondo ha 3 livelli e un castello finale con un boss.
+### La storia
+- **All'inizio** (la prima volta che si apre la mappa): la lettera di ammissione a Unipa, il Prof. Garbo che non vuole
+  nuove matricole e con i suoi segnali aleatori ha messo sottosopra mezza Sicilia, le quattro città da liberare.
+- **Dopo Naso**: le città sono di nuovo libere e si parte per Palermo, dove Garbo ha bloccato l'uscita di Unipa.
+- **Alla fine**: la laurea, e Capo d'Orlando, Paceco, Barcellona e Naso festeggiano.
 
-| Mondo | Livelli | Boss |
+Battuto il boss di una città compare la scritta "CAPO D'ORLANDO LIBERATA!", "PACECO LIBERATA!" e così via.
+
+### Il viaggio: le quattro città (mondi 1-4)
+Ogni città ha 3 livelli e un castello finale con un boss. Ogni livello mostra sullo sfondo una parte diversa della
+città (grafica originale, con i luoghi semplificati).
+
+| Mondo | Livelli e sfondi | Boss |
 |---|---|---|
-| 1 – Prati Pixel | Collina Verde (tutorial), Ponti sul Ruscello, Torri di Mattoni | **Re Cinghialone**: carica a testa bassa; quando sbatte contro il muro resta stordito |
-| 2 – Deserto Dorato | Dune Ardenti, Rovine Antiche, Canyon dei Venti | **Faraone Scarabeo**: vola e lancia sabbia, poi si tuffa a terra |
-| 3 – Picchi Ghiacciati | Pendii Innevati, Grotta di Cristallo, Vetta Gelata (scalata verticale) | **Yeti Glaciale**: palle di neve e schianti che fanno cadere stalattiti |
-| 4 – Fortezza di Lava | Fiume di Magma, Fucina Oscura, Torre delle Ombre (scalata verticale) | **Lord Magmus**: si teletrasporta e lancia ventagli di fuoco |
+| 1 – **Capo d'Orlando** | **Il Lungomare** (tutorial: spiaggia con gli ombrelloni, palme e lampioni, le Eolie all'orizzonte con lo Stromboli che fuma), **Il Porto** (barche a vela, il molo con il fanale), **Il Centro** (palazzine con balconi e persiane verdi, la chiesa, i Nebrodi dietro), **Il Capo** (il promontorio con il santuario in cima e i ruderi del castello, al tramonto) | **Re Cinghialone**: carica a testa bassa; quando sbatte contro il muro resta stordito |
+| 2 – **Paceco** | **Le Saline** (vasche, cumuli di sale coperti di tegole, mulini a vento, Monte Erice con il borgo in cima), **Il Centro di Paceco** (case color tufo, la Chiesa Madre con cupola e campanile), **I Mulini a Vento** (mulini che girano tra i campi di grano), **Il Grande Mulino** (le saline al tramonto) | **Scarabeo delle Saline**: vola e lancia sabbia, poi si tuffa a terra |
+| 3 – **Barcellona Pozzo di Gotto** (era glaciale) | **Il Longano Ghiacciato** (il torrente gelato con i ponti), **Piazza San Sebastiano** (la basilica sotto la neve), **Il Campanile Gelato** (scalata verticale sui tetti innevati), **Il Teatro Mandanici** (di notte). Nevica sempre | **Yeti Glaciale**: palle di neve e schianti che fanno cadere stalattiti |
+| 4 – **Naso** | **La Strada per Naso** (ulivi e fichi d'India al tramonto, il paese sulla collina, lo Stromboli in eruzione), **Il Borgo di Naso** (di notte, le finestre accese), **Le Mura del Castello** (scalata verticale), **Il Castello di Naso** (i ruderi sotto il cielo rosso) | **Lord Magmus**, svegliato dallo Stromboli: si teletrasporta e lancia ventagli di fuoco |
 
 Nemici: gelatine, ricci spinosi (si battono con lo spin o con le abilità), pipistrelli, rane, pinguini,
 spiriti di fuoco, cannoni, massi schiaccianti, **golem di pietra** (3 colpi), **cactus sparaspine** e **lucertole** che
@@ -122,7 +134,7 @@ scattano verso di te. I nemici sono più veloci nei mondi avanzati e i boss hann
 pozione vita extra, molle, piattaforme mobili e che cadono, checkpoint.
 
 ### Il vero gioco: Unipa (mondi 5-7)
-Dopo aver sconfitto Lord Magmus parte la **storia**: il prologo era solo l'inizio, ora bisogna laurearsi.
+Dopo aver liberato Naso si parte per Palermo: ora bisogna laurearsi.
 I mondi di Unipa sono strutturati diversamente: **2 livelli, castello del boss intermedio, 2 livelli,
 castello del boss di fine mondo**. Sono molto più difficili del prologo.
 
@@ -162,6 +174,7 @@ app/AndroidManifest.xml
 app/src/it/pixelquest/core/   motore di gioco in Java puro (nessuna dipendenza Android)
     Game, WorldMap, Level, Player, Ents (nemici/oggetti), Bosses, Hero, HeroArt (pixel art dei personaggi),
     Uni/UniBosses/UniArt (nemici, gusci, boss e grafica dei mondi di Unipa),
+    TownArt (sfondi delle quattro città: Capo d'Orlando, Paceco, Barcellona P.G., Naso),
     Art/Theme (grafica procedurale), Gfx/Font (renderer software), Audio/Sfx/Music (sintetizzatore chiptune)
 app/src/it/pixelquest/game/   parte Android: MainActivity, GameView (SurfaceView, touch, AudioTrack)
 levels/levels.txt             i livelli in formato testo (convertiti in Levels.java da tools/genlevels.py)

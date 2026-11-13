@@ -54,7 +54,7 @@ public final class Levels {
     }
 
     private static LevelDef L0() {
-        LevelDef d = new LevelDef(0, "COLLINA VERDE", false, new String[]{
+        LevelDef d = new LevelDef(0, "IL LUNGOMARE", false, new String[]{
                 "                                                                                                                                                                                                                                                                                  ",
                 "                                                                                                                                   g                                                                                                                                              ",
                 "                                                                                                                                                                                                                                                                                  ",
@@ -76,7 +76,7 @@ public final class Levels {
     }
 
     private static LevelDef L1() {
-        LevelDef d = new LevelDef(1, "PONTI SUL RUSCELLO", false, new String[]{
+        LevelDef d = new LevelDef(1, "IL PORTO", false, new String[]{
                 "                                                                                                                                                                                                          ",
                 "                                                                                                                                                                                                          ",
                 "                                                                                                                                                                                                          ",
@@ -97,7 +97,7 @@ public final class Levels {
     }
 
     private static LevelDef L2() {
-        LevelDef d = new LevelDef(2, "TORRI DI MATTONI", false, new String[]{
+        LevelDef d = new LevelDef(2, "IL CENTRO", false, new String[]{
                 "                                                                                                                                                                                                          ",
                 "                                                                                                                                                                                                          ",
                 "                                                                                     ooo                                                                                                                  ",
@@ -118,7 +118,7 @@ public final class Levels {
     }
 
     private static LevelDef L3() {
-        LevelDef d = new LevelDef(3, "TANA DEL RE CINGHIALONE", true, new String[]{
+        LevelDef d = new LevelDef(3, "IL CAPO", true, new String[]{
                 "                                                          ",
                 "                                                          ",
                 "                                                          ",
@@ -139,7 +139,7 @@ public final class Levels {
     }
 
     private static LevelDef L4() {
-        LevelDef d = new LevelDef(4, "DUNE ARDENTI", false, new String[]{
+        LevelDef d = new LevelDef(4, "LE SALINE", false, new String[]{
                 "                                                                                                                                                                                                          ",
                 "                                                                           g                                                                                                                              ",
                 "                                                                                                                                                                                                          ",
@@ -160,7 +160,7 @@ public final class Levels {
     }
 
     private static LevelDef L5() {
-        LevelDef d = new LevelDef(5, "ROVINE ANTICHE", false, new String[]{
+        LevelDef d = new LevelDef(5, "IL CENTRO DI PACECO", false, new String[]{
                 "                        ==========================================================                                                                                                                        ",
                 "                        ==========================================================                                                                                                                        ",
                 "                        ========================   v     v   v                    =                   o o o       g                                                                                       ",
@@ -181,7 +181,7 @@ public final class Levels {
     }
 
     private static LevelDef L6() {
-        LevelDef d = new LevelDef(6, "CANYON DEI VENTI", false, new String[]{
+        LevelDef d = new LevelDef(6, "I MULINI A VENTO", false, new String[]{
                 "                                                                                                                                                                                                          ",
                 "                                                                                     g                                                                                                                    ",
                 "                                                                             s                                                                                                                            ",
@@ -202,7 +202,7 @@ public final class Levels {
     }
 
     private static LevelDef L7() {
-        LevelDef d = new LevelDef(7, "PIRAMIDE DELLO SCARABEO", true, new String[]{
+        LevelDef d = new LevelDef(7, "IL GRANDE MULINO", true, new String[]{
                 "                                                          ",
                 "                                                          ",
                 "                                                          ",
@@ -223,7 +223,7 @@ public final class Levels {
     }
 
     private static LevelDef L8() {
-        LevelDef d = new LevelDef(8, "PENDII INNEVATI", false, new String[]{
+        LevelDef d = new LevelDef(8, "IL LONGANO GHIACCIATO", false, new String[]{
                 "                                                                                                                                                                                                          ",
                 "                                                                                                                                                                                                          ",
                 "                                                                                  g                                                                                                                       ",
@@ -244,7 +244,7 @@ public final class Levels {
     }
 
     private static LevelDef L9() {
-        LevelDef d = new LevelDef(9, "GROTTA DI CRISTALLO", false, new String[]{
+        LevelDef d = new LevelDef(9, "PIAZZA SAN SEBASTIANO", false, new String[]{
                 "========================================================================================================BBB=======================================================================",
                 "========================================================================================================BgB=======================================================================",
                 "================================================                        ================================B B=======================================================================",
@@ -265,7 +265,7 @@ public final class Levels {
     }
 
     private static LevelDef L10() {
-        LevelDef d = new LevelDef(10, "VETTA GELATA", false, new String[]{
+        LevelDef d = new LevelDef(10, "IL CAMPANILE GELATO", false, new String[]{
                 "#                        #",
                 "#                        #",
                 "#                        #",
@@ -311,7 +311,7 @@ public final class Levels {
     }
 
     private static LevelDef L11() {
-        LevelDef d = new LevelDef(11, "CAVERNA DELLO YETI", true, new String[]{
+        LevelDef d = new LevelDef(11, "IL TEATRO MANDANICI", true, new String[]{
                 "                                                          ",
                 "                                                          ",
                 "                                                          ",
@@ -332,7 +332,7 @@ public final class Levels {
     }
 
     private static LevelDef L12() {
-        LevelDef d = new LevelDef(12, "FIUME DI MAGMA", false, new String[]{
+        LevelDef d = new LevelDef(12, "LA STRADA PER NASO", false, new String[]{
                 "                                                                                                                                                                                                          ",
                 "                                                                                                                                   g                                                                      ",
                 "                                                                                                                                                                                                          ",
@@ -353,7 +353,7 @@ public final class Levels {
     }
 
     private static LevelDef L13() {
-        LevelDef d = new LevelDef(13, "FUCINA OSCURA", false, new String[]{
+        LevelDef d = new LevelDef(13, "IL BORGO DI NASO", false, new String[]{
                 "================================================================================================================================================                                  ",
                 "================================================================================================================================================                                  ",
                 "                        ========================   v     v   v          ========================                        ===============                                           ",
@@ -374,7 +374,7 @@ public final class Levels {
     }
 
     private static LevelDef L14() {
-        LevelDef d = new LevelDef(14, "TORRE DELLE OMBRE", false, new String[]{
+        LevelDef d = new LevelDef(14, "LE MURA DEL CASTELLO", false, new String[]{
                 "#                        #",
                 "#                        #",
                 "#               oooo     #",
@@ -424,7 +424,7 @@ public final class Levels {
     }
 
     private static LevelDef L15() {
-        LevelDef d = new LevelDef(15, "TRONO DI MAGMUS", true, new String[]{
+        LevelDef d = new LevelDef(15, "IL CASTELLO DI NASO", true, new String[]{
                 "                                                          ",
                 "                                                          ",
                 "                                                          ",

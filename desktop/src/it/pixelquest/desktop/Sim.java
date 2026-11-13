@@ -48,6 +48,7 @@ public class Sim {
         out = args[0];
         String sc = args.length > 1 ? args[1] : "screens";
         g = new Game(498, 224, mem());
+        g.save.seenIntro = true; // tests go straight to the map
         if (sc.equals("screens")) screens();
         else if (sc.equals("levels")) levels(args.length > 2 ? Integer.parseInt(args[2]) : -1);
         else if (sc.equals("play")) play(Integer.parseInt(args[2]), args.length > 3 ? Integer.parseInt(args[3]) : 0);
@@ -61,6 +62,9 @@ public class Sim {
         else if (sc.equals("abilities")) abilities();
         else if (sc.equals("batpose")) batpose();
         else if (sc.equals("maptest")) maptest();
+        else if (sc.equals("towns")) towns();
+        else if (sc.equals("mapshots")) mapshots();
+        else if (sc.equals("story")) story();
         else if (sc.equals("cash")) cash();
         else if (sc.equals("spring")) {
             g.save.hero = Integer.getInteger("hero", 0);
@@ -738,6 +742,55 @@ public class Sim {
                 System.out.println(String.format("%-10s upg=%d recharge=%.1fs  %s", nm[h], upg, p.rechargeTime / 60f, hit));
                 g.save.upgrades[h] = 0;
             }
+        }
+    }
+
+    /** Every background of the four prologue towns, one picture per world/level. */
+    static void towns() throws Exception {
+        for (int w = 0; w < 4; w++)
+            for (int st = 0; st < 4; st++) {
+                Theme t = Theme.get(w);
+                t.stage = st;
+                t.drawBackground(g.gfx, 900, 240 - g.H, 240, 400);
+                Png.save(g.gfx, 1, out + "/town_" + w + "_" + st + ".png");
+            }
+    }
+
+    static void mapshots() throws Exception {
+        java.lang.reflect.Method go = Game.class.getDeclaredMethod("go", int.class, int.class);
+        go.setAccessible(true);
+        g.save.unlocked = Save.LEVELS - 1;
+        for (int n : new int[]{1, 5, 9, 13}) {
+            g.save.lastNode = n;
+            go.invoke(g, Game.MAP, 0);
+            for (int i = 0; i < 200; i++) g.tick();
+            shot("map_" + n);
+        }
+    }
+
+    /** The two story chapters, page by page (and that the intro is shown once before the first map). */
+    static void story() throws Exception {
+        java.lang.reflect.Method go = Game.class.getDeclaredMethod("go", int.class, int.class);
+        go.setAccessible(true);
+        g.save.seenIntro = false;
+        go.invoke(g, Game.MAP, 0);
+        for (int i = 0; i < 60; i++) g.tick();
+        System.out.println("first map visit -> screen " + g.screen + " (9 = story)");
+        for (int ch = 0; ch < 2; ch++) {
+            if (ch == 1) {
+                go.invoke(g, Game.STORY, 1);
+                for (int i = 0; i < 60; i++) g.tick();
+            }
+            for (int p = 0; p < 4; p++) {
+                for (int i = 0; i < 50; i++) g.tick();
+                shot("story_" + ch + "_" + p);
+                g.input.keyA = true;
+                g.tick();
+                g.input.keyA = false;
+                g.tick();
+            }
+            for (int i = 0; i < 60; i++) g.tick();
+            System.out.println("after chapter " + ch + " -> screen " + g.screen + " (2 = map), seenIntro=" + g.save.seenIntro);
         }
     }
 

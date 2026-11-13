@@ -8,7 +8,7 @@
 #! 'n'/'u' vertical platform (opposite phases)  'F' falling platform
 #! Chunks separated by '+' are glued left to right.
 
-@level 0 normal COLLINA VERDE
+@level 0 normal IL LUNGOMARE
 @hint LEVETTA: CAMMINA. SPINGILA AL MASSIMO PER CORRERE!
 @hint A: SALTA. TIENI PREMUTO PER SALTARE PIÙ IN ALTO!
 @hint I FIORI NEI BLOCCHI POTENZIANO LA TUA ABILITÀ!
@@ -210,7 +210,7 @@
 ##########
 @end
 
-@level 1 normal PONTI SUL RUSCELLO
+@level 1 normal IL PORTO
 ........................
 ........................
 ........................
@@ -356,7 +356,7 @@
 ##########
 @end
 
-@level 2 normal TORRI DI MATTONI
+@level 2 normal IL CENTRO
 ........................
 ........................
 ........................
@@ -502,7 +502,7 @@
 ##########
 @end
 
-@level 3 boss TANA DEL RE CINGHIALONE
+@level 3 boss IL CAPO
 ........................
 ........................
 ........................
@@ -536,7 +536,7 @@ K.................................
 ##################################
 @end
 
-@level 4 normal DUNE ARDENTI
+@level 4 normal LE SALINE
 ........................
 ........................
 ........................
@@ -682,7 +682,7 @@ T...C.....s...q...s..l..
 ##########
 @end
 
-@level 5 normal ROVINE ANTICHE
+@level 5 normal IL CENTRO DI PACECO
 ........................
 ........................
 ........................
@@ -828,7 +828,7 @@ T...C.....s...q...s..l..
 ##########
 @end
 
-@level 6 normal CANYON DEI VENTI
+@level 6 normal I MULINI A VENTO
 ........................
 ........................
 ........................
@@ -974,7 +974,7 @@ n....u....n....u....n...
 ##########
 @end
 
-@level 7 boss PIRAMIDE DELLO SCARABEO
+@level 7 boss IL GRANDE MULINO
 ........................
 ........................
 ........................
@@ -1008,7 +1008,7 @@ K.................................
 ##################################
 @end
 
-@level 8 normal PENDII INNEVATI
+@level 8 normal IL LONGANO GHIACCIATO
 ........................
 ........................
 ........................
@@ -1154,7 +1154,7 @@ IIIIIIIIIIIIIIIIIIIIIIII
 ##########
 @end
 
-@level 9 normal GROTTA DI CRISTALLO
+@level 9 normal PIAZZA SAN SEBASTIANO
 ========================
 ========================
 ========================
@@ -1284,7 +1284,7 @@ IIIIIIIIIIIIIIIIII..####
 ##########
 @end
 
-@level 11 boss CAVERNA DELLO YETI
+@level 11 boss IL TEATRO MANDANICI
 ........................
 ........................
 ........................
@@ -1318,7 +1318,7 @@ K.................................
 ##################################
 @end
 
-@level 12 normal FIUME DI MAGMA
+@level 12 normal LA STRADA PER NASO
 ........................
 ........................
 ........................
@@ -1464,7 +1464,7 @@ K.................................
 ##########
 @end
 
-@level 13 normal FUCINA OSCURA
+@level 13 normal IL BORGO DI NASO
 ========================
 ========================
 ........................
@@ -1594,7 +1594,7 @@ k......................k
 ==========
 @end
 
-@level 15 boss TRONO DI MAGMUS
+@level 15 boss IL CASTELLO DI NASO
 ........................
 ........................
 ........................
@@ -1628,7 +1628,7 @@ K.................................
 ##################################
 @end
 
-@level 10 normal VETTA GELATA
+@level 10 normal IL CAMPANILE GELATO
 #........................#
 #........................#
 #........................#
@@ -1671,7 +1671,7 @@ K.................................
 ##########################
 @end
 
-@level 14 normal TORRE DELLE OMBRE
+@level 14 normal LE MURA DEL CASTELLO
 #........................#
 #........................#
 #...............oooo.....#

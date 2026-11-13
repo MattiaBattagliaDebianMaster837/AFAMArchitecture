@@ -349,7 +349,7 @@ public final class Bosses {
         float baseY, ang;
 
         Scarab(float x, float y) {
-            super(x, y, 36, 28, 12, "FARAONE SCARABEO");
+            super(x, y, 36, 28, 12, "SCARABEO DELLE SALINE");
             if (scarabSprites == null) scarabSprites = new Sprite[]{scarab(0, false), scarab(1, false), scarab(0, true)};
             gravity = true;
         }

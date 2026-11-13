@@ -1,6 +1,6 @@
 package it.pixelquest.core;
 
-/** The overworld map: 4 worlds, 16 level nodes connected by a path. */
+/** The overworld map: the four towns of the prologue, then the University of Palermo. */
 public final class WorldMap {
     static final int MW = 2340, MH = 224, UNI_X = 1220, UNI_W = 370;
     static final int[][] NODES = {
@@ -150,6 +150,11 @@ public final class WorldMap {
         }
         if (UNI_X - c > -260 && UNI_X - c < game.W)
             g.textO("IL VERO GIOCO: UNIPA", UNI_X - c + 10, 40, 0xFFFFE070, 0xFF5A1A2A, 1);
+        int[] townCol = {0xFFFFFFFF, 0xFFFFF0C0, 0xFFE8F4FF, 0xFFFFC080};
+        for (int r = 0; r < 4; r++) { // the four towns of the journey
+            int tx = r * 300 + 8 - c;
+            if (tx > -200 && tx < game.W) g.textO(Theme.get(r).name, tx, 40, townCol[r], 0xFF1A1A2A, 1);
+        }
         // hero icon
         Sprite icon = game.hero().icon;
         int bob = moveFrom < 0 ? (int) Math.round(Math.sin(t * 0.12) * 2) : 0;
@@ -219,7 +224,14 @@ public final class WorldMap {
         Sprite b = Theme.get(4).building, bn = Theme.get(6).buildingNight;
         stampScaled(s, b, UNI_X + UNI_W - 52, 30, 0.6f);
         stampScaled(s, bn, UNI_X + 2 * UNI_W + 120, 30, 0.6f);
-        // lava rivers in world 4
+        // landmarks of the four towns
+        TownArt capo = Theme.get(0).town();
+        Sprite cape = capo.capo().sub(0, 0, 150, TownArt.CAPO_HY + 14);
+        stampScaled(s, cape, 176, MH - 14 - (int) (TownArt.CAPO_HY * 0.3f), 0.3f); // the cape on the coast at the bottom
+        stampScaled(s, Theme.get(1).town().erice(), 330, 46, 0.2f);
+        stampScaled(s, Theme.get(2).town().basilica(), 772, 46, 0.3f);
+        stampScaled(s, Theme.get(3).town().nasoTown(), 1060, 120, 0.28f);
+        // lava from Stromboli flowing through Naso
         for (int y = 30; y < MH - 16; y++) {
             int rx = 1010 + (int) (Math.sin(y * 0.06) * 30);
             for (int x = rx; x < rx + 5; x++) s.set(x, y, (x + y) % 5 == 0 ? 0xFFFFD050 : 0xFFE8501A);
@@ -238,6 +250,13 @@ public final class WorldMap {
             drawDeco(s, x, y, regionOf(x), rnd.nextInt(3));
         }
         return s;
+    }
+
+    private static void house(Sprite s, int x, int y, int wall) {
+        for (int yy = -4; yy <= 0; yy++) for (int xx = 0; xx < 6; xx++) s.set(x + xx, y + yy, wall);
+        for (int xx = -1; xx < 7; xx++) s.set(x + xx, y - 5, 0xFFC0603A);
+        s.set(x + 2, y - 1, 0xFF5A4A3A);
+        s.set(x + 2, y, 0xFF5A4A3A);
     }
 
     private static float distSeg(float px, float py, float x0, float y0, float x1, float y1) {
@@ -279,40 +298,52 @@ public final class WorldMap {
                     s.set(x + 1, y - 10, 0xFFFFE070);
                 } else for (int yy = -6; yy <= 0; yy++) for (int xx = -(6 + yy) / 2; xx <= (6 + yy) / 2; xx++) s.set(x + xx, y + yy, 0xFF14142A);
                 return;
-            case 0:
-                if (v < 2) { // tree
+            case 0: // Capo d'Orlando: trees, houses with red roofs, palms
+                if (v == 0) { // tree
                     for (int yy = -9; yy <= 0; yy++)
                         for (int xx = -5; xx <= 5; xx++)
                             if (xx * xx + (yy + 5) * (yy + 5) < 22) s.set(x + xx, y + yy, xx + yy < -4 ? 0xFF7ACF6A : 0xFF2E7A34);
                     s.set(x, y + 1, 0xFF5A3A24);
                     s.set(x, y + 2, 0xFF5A3A24);
-                } else { // flowers
-                    s.set(x, y, 0xFFF06A8A);
-                    s.set(x + 3, y + 1, 0xFFFFE04A);
-                    s.set(x - 2, y + 2, 0xFFFFFFFF);
+                } else if (v == 1) house(s, x, y, 0xFFF4EEE0);
+                else { // palm
+                    for (int yy = -8; yy <= 0; yy++) s.set(x, y + yy, 0xFF8A6A3A);
+                    for (int a = 0; a < 5; a++)
+                        for (int d = 0; d < 5; d++) s.set(x + (int) (Math.cos(a * 1.25) * d), y - 9 + (int) (Math.sin(a * 1.25) * d * 0.5 + d * 0.3), 0xFF2E8A3A);
                 }
                 break;
-            case 1:
-                if (v == 0) { // pyramid
-                    for (int yy = 0; yy < 10; yy++)
-                        for (int xx = -yy; xx <= yy; xx++) s.set(x + xx, y - 10 + yy, xx < 0 ? 0xFFE0A858 : 0xFFB8803A);
-                } else { // cactus
-                    for (int yy = -6; yy <= 0; yy++) s.set(x, y + yy, 0xFF3E8A4A);
-                    s.set(x - 1, y - 3, 0xFF3E8A4A);
-                    s.set(x + 1, y - 4, 0xFF3E8A4A);
+            case 1: // Paceco: salt pans, salt heaps, windmills
+                if (v == 0) { // salt pan
+                    for (int yy = 0; yy < 5; yy++) for (int xx = 0; xx < 12; xx++) s.set(x + xx, y + yy, (yy == 0 || xx == 0) ? 0xFFB89A6A : 0xFFF0B8C8);
+                } else if (v == 1) { // salt heap
+                    for (int yy = 0; yy < 6; yy++) for (int xx = -yy; xx <= yy; xx++) s.set(x + xx, y - 6 + yy, xx > 1 ? 0xFFD8DCE4 : 0xFFFFFFFF);
+                } else { // windmill
+                    for (int yy = -8; yy <= 0; yy++) for (int xx = -1; xx <= 1; xx++) s.set(x + xx, y + yy, 0xFFF0E6D0);
+                    s.set(x, y - 9, 0xFF6A4A32);
+                    for (int d = 1; d < 5; d++) { s.set(x - d, y - 9 - d, 0xFF8A7A60); s.set(x + d, y - 9 - d, 0xFF8A7A60); s.set(x - d, y - 9 + d, 0xFF8A7A60); s.set(x + d, y - 9 + d, 0xFF8A7A60); }
                 }
                 break;
-            case 2:
-                for (int yy = 0; yy < 10; yy++) { // snowy pine
-                    int hw = yy / 2;
-                    for (int xx = -hw; xx <= hw; xx++) s.set(x + xx, y - 10 + yy, yy % 4 < 1 ? 0xFFFFFFFF : 0xFF2A5A6A);
+            case 2: // Barcellona under the ice: snowy pines and snowy houses
+                if (v < 2) {
+                    for (int yy = 0; yy < 10; yy++) { // snowy pine
+                        int hw = yy / 2;
+                        for (int xx = -hw; xx <= hw; xx++) s.set(x + xx, y - 10 + yy, yy % 4 < 1 ? 0xFFFFFFFF : 0xFF2A5A6A);
+                    }
+                    s.set(x, y, 0xFF4A3A2A);
+                } else {
+                    house(s, x, y, 0xFFE8D8C4);
+                    for (int xx = -1; xx < 7; xx++) s.set(x + xx, y - 6, 0xFFFFFFFF); // snow on the roof
                 }
-                s.set(x, y, 0xFF4A3A2A);
                 break;
-            default:
-                if (v == 0) { // volcano
-                    for (int yy = 0; yy < 12; yy++)
-                        for (int xx = -yy - 2; xx <= yy + 2; xx++) s.set(x + xx, y - 12 + yy, yy < 2 ? 0xFFFF7A2A : xx < 0 ? 0xFF2A1A22 : 0xFF1A1018);
+            default: // Naso: olive trees, small castles; the lava comes from Stromboli
+                if (v == 0) { // olive tree
+                    for (int yy = -6; yy <= 0; yy++) s.set(x, y + yy, 0xFF4A3A30);
+                    for (int yy = -10; yy <= -5; yy++) for (int xx = -4; xx <= 4; xx++) if (xx * xx + (yy + 7) * (yy + 7) * 2 < 18) s.set(x + xx, y + yy, 0xFF6A7A4A);
+                } else if (v == 1) { // castle tower
+                    for (int yy = -9; yy <= 0; yy++) for (int xx = -2; xx <= 2; xx++) s.set(x + xx, y + yy, 0xFF4A3A40);
+                    s.set(x - 2, y - 10, 0xFF4A3A40);
+                    s.set(x + 2, y - 10, 0xFF4A3A40);
+                    s.set(x, y - 6, 0xFFFF9A3A);
                 } else { // spikes of rock
                     for (int yy = 0; yy < 6; yy++) s.set(x, y - yy, 0xFF2A1A22);
                     s.set(x + 1, y, 0xFF2A1A22);

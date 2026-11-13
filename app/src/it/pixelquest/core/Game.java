@@ -103,9 +103,16 @@ public final class Game {
                 break;
             case STORY:
                 storyPage = 0;
-                audio.music(Music.W5);
+                storyChapter = Math.max(0, Math.min(STORIES.length - 1, param));
+                audio.music(storyChapter == 0 ? Music.W1 : Music.W5);
                 break;
             case MAP:
+                if (!save.seenIntro) { // the very first time: the story of the journey before the map
+                    save.seenIntro = true;
+                    save.store();
+                    doGo(STORY, 0);
+                    return;
+                }
                 level = null;
                 map.enter();
                 audio.music(Music.MAP);
@@ -173,7 +180,7 @@ public final class Game {
         }
         if (idx == LevelDef.PROLOGUE_LEVELS - 1 && first) {
             map.pendingAdvance = true;
-            go(STORY, 0);
+            go(STORY, 1);
             return;
         }
         map.pendingAdvance = first;
@@ -233,7 +240,7 @@ public final class Game {
                 if (screenT > 40 && (input.aP || input.bP || !touch.taps.isEmpty() || input.backP)) {
                     screenT = 0;
                     Sfx.play(Sfx.SELECT);
-                    if (++storyPage >= STORY_PAGES.length) go(MAP, 0);
+                    if (++storyPage >= STORIES[storyChapter].length) go(MAP, 0);
                 }
                 break;
             case GAMEOVER:
@@ -508,7 +515,7 @@ public final class Game {
         // slime chasing for fun
         g.blit(Art.slime[0][(frame / 12) % 2].scaled(2), W / 2 + 70, gy - 22);
         if ((frame / 30) % 2 == 0) g.textC("TOCCA PER INIZIARE", W / 2, H - 14, 0xFFFFFFFF, 0xFF000000, 1);
-        g.text("V1.5", W - 28, H - 10, 0xFFFFFFFF, 1, 160);
+        g.text("V1.6", W - 28, H - 10, 0xFFFFFFFF, 1, 160);
     }
 
     private void renderSelect(Gfx g) {
@@ -693,22 +700,42 @@ public final class Game {
         if (screenT > 90 && (frame / 25) % 2 == 0) g.textC("TOCCA PER RIPROVARE", W / 2, H - 22, 0xFFFFFFFF, 0xFF000000, 1);
     }
 
-    private int storyPage;
-    private static final String[][] STORY_PAGES = {
-            {"HAI SCONFITTO LORD MAGMUS!", "", "MA ERA SOLO IL PROLOGO..."},
-            {"ORA INIZIA IL VERO GIOCO:", "L'UNIVERSIT\u00c0 DI PALERMO.", "", "PRIMO ANNO, SECONDO ANNO, ULTIMO ANNO."},
-            {"IL PERFIDO PROF. GIOVANNI GARBO", "HA BLOCCATO L'USCITA DI UNIPA", "CON I SUOI SEGNALI ALEATORI."},
-            {"ENTRA, SUPERA GLI ESAMI...", "E SCAPPA DA UNIPA!", "", "IN BOCCA AL LUPO!"}};
+    private int storyPage, storyChapter;
+    /** Chapter 0: the journey through the four towns before university. Chapter 1: off to Palermo, to Unipa. */
+    private static final String[][][] STORIES = {
+            {
+                    {"ESTATE IN SICILIA", "\u00c8 ARRIVATA LA LETTERA:", "SEI STATO AMMESSO ALL'UNIVERSIT\u00c0 DI PALERMO!"},
+                    {"MA C'\u00c8 UN PROBLEMA...", "IL PROF. GIOVANNI GARBO NON VUOLE NUOVE MATRICOLE:", "CON I SUOI SEGNALI ALEATORI",
+                            "HA MESSO SOTTOSOPRA MEZZA SICILIA."},
+                    {"LA SICILIA \u00c8 IN PERICOLO", "UN CINGHIALONE GIGANTE SCORRAZZA A CAPO D'ORLANDO,",
+                            "UNO SCARABEO HA INVASO LE SALINE DI PACECO,", "BARCELLONA POZZO DI GOTTO \u00c8 SOTTO IL GHIACCIO",
+                            "E A NASO LO STROMBOLI HA SVEGLIATO LORD MAGMUS."},
+                    {"IL VIAGGIO", "LIBERA LE QUATTRO CITT\u00c0", "E RAGGIUNGI PALERMO PER IMMATRICOLARTI.", "",
+                            "IN BOCCA AL LUPO, MATRICOLA!"}},
+            {
+                    {"HAI SCONFITTO LORD MAGMUS!", "CAPO D'ORLANDO, PACECO, BARCELLONA E NASO", "SONO DI NUOVO LIBERE."},
+                    {"SI PARTE PER PALERMO", "ORA INIZIA IL VERO GIOCO:", "L'UNIVERSIT\u00c0 DI PALERMO.", "",
+                            "PRIMO ANNO, SECONDO ANNO, ULTIMO ANNO."},
+                    {"IL PROF. GIOVANNI GARBO", "TI ASPETTA: HA BLOCCATO L'USCITA DI UNIPA", "CON I SUOI SEGNALI ALEATORI."},
+                    {"SUPERA GLI ESAMI...", "E CONQUISTA LA LAUREA!", "", "IN BOCCA AL LUPO!"}}};
+    /** Background of every page: {theme, stage, show Garbo}. */
+    private static final int[][][] STORY_BG = {
+            {{0, 0, 0}, {6, 4, 1}, {2, 1, 0}, {3, 0, 0}},
+            {{3, 3, 0}, {4, 1, 0}, {6, 4, 1}, {4, 3, 0}}};
 
     private void renderStory(Gfx g) {
-        Theme th = Theme.get(storyPage < 2 ? 4 : 6);
-        th.stage = storyPage < 2 ? 1 + storyPage * 2 : 4;
+        String[][] pages = STORIES[storyChapter];
+        int page = Math.min(storyPage, pages.length - 1);
+        int[] bg = STORY_BG[storyChapter][page];
+        Theme th = Theme.get(bg[0]);
+        th.stage = bg[1];
         th.drawBackground(g, frame * 0.4f, 0, H, frame);
         g.dim(0xFF000000, 120);
-        String[] lines = STORY_PAGES[Math.min(storyPage, STORY_PAGES.length - 1)];
-        int y0 = H / 2 - lines.length * 9;
-        for (int i = 0; i < lines.length; i++) g.textC(lines[i], W / 2, y0 + i * 18, i == 0 ? 0xFFFFE070 : 0xFFFFFFFF, 0xFF000000, i == 0 ? 2 : 1);
-        if (storyPage >= 2) {
+        String[] lines = pages[page];
+        int y0 = H / 2 - lines.length * 9 - 4;
+        for (int i = 0; i < lines.length; i++)
+            g.textC(lines[i], W / 2, y0 + i * 16 + (i > 0 ? 10 : 0), i == 0 ? 0xFFFFE070 : 0xFFFFFFFF, 0xFF000000, i == 0 ? 2 : 1);
+        if (bg[2] != 0) {
             Sprite gb = UniArt.garbo[(frame / 30) % 2];
             g.blit(gb, W - 70, H - 80, false);
         }
@@ -731,7 +758,8 @@ public final class Game {
             g.fill(hx + 12, hy - 1, 16, 4, 0xFF1A1A22);
             g.fill(hx + 34, hy - 2, 2, 8, 0xFFE03A3A);
         }
-        String[] lines = {"HAI SCONFITTO IL PROF. GIOVANNI GARBO", "E SEI USCITO DA UNIPA... CON LA LAUREA!", "",
+        String[] lines = {"HAI SCONFITTO IL PROF. GIOVANNI GARBO", "E SEI USCITO DA UNIPA... CON LA LAUREA!",
+                "CAPO D'ORLANDO, PACECO, BARCELLONA E NASO FESTEGGIANO!", "",
                 "GEMME TROVATE: " + save.totalGems() + "/" + WorldMap.totalGems(), "GRAZIE PER AVER GIOCATO!"};
         for (int i = 0; i < lines.length; i++) g.textC(lines[i], W / 2, 120 + i * 13, 0xFFFFFFFF, 0xFF000000, 1);
         for (int k = 0; k < 10; k++) { // confetti

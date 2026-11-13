@@ -623,7 +623,7 @@ public final class Level {
         state = BOSSWIN;
         stateT = 0;
         game.audio.music(Music.CLEAR);
-        banner = def.worldBoss() ? (def.world >= 4 ? Theme.get(def.world).name + " SUPERATO!" : "MONDO " + (def.world + 1) + " COMPLETATO!")
+        banner = def.worldBoss() ? (def.world >= 4 ? Theme.get(def.world).name + " SUPERATO!" : Theme.get(def.world).shortName + " LIBERATA!")
                 : "CASTELLO SUPERATO!";
         bannerT = 999;
     }
