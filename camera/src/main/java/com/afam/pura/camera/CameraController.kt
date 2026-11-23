@@ -1051,6 +1051,7 @@ class CameraController(
         val p = sessionPlan ?: return
         val spec = catalog.spec(p.cameraId) ?: return
         if (spec.maxRegionsAf == 0 && spec.maxRegionsAe == 0) return
+        if (shot != Shot.IDLE) return // non si cambia fuoco a metà scatto
         handler.removeCallbacks(resetFocus)
         val crop = if (!spec.usesZoomRatio && zoom > 1.001f) Metering.cropForZoom(spec, zoom) else null
         focusRegion = Metering.region(nx, ny, spec, p.preview.width.toFloat() / p.preview.height, crop)
