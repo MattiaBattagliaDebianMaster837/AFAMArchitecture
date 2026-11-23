@@ -15,8 +15,8 @@ android {
         // Android 12: API per i sensori ad altissima risoluzione (50 MP) e zoom moderno.
         minSdk = 31
         targetSdk = 36
-        versionCode = 5
-        versionName = "1.4"
+        versionCode = 6
+        versionName = "1.5"
     }
 
     signingConfigs {

@@ -256,6 +256,15 @@ fun SettingsScreen(state: UiState, actions: CameraActions, onClose: () -> Unit) 
                     modifier = Modifier.padding(top = 24.dp),
                 )
             }
+            item {
+                Text(
+                    "Pura versione ${com.afam.pura.BuildConfig.VERSION_NAME}",
+                    color = Color.White,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 16.dp),
+                )
+            }
         }
     }
 }
