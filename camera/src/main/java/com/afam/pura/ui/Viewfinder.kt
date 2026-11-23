@@ -1,6 +1,7 @@
 package com.afam.pura.ui
 
 import android.graphics.Bitmap
+import android.graphics.Matrix
 import android.graphics.RenderEffect
 import android.graphics.RuntimeShader
 import android.graphics.SurfaceTexture
@@ -12,6 +13,11 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.foundation.shape.GenericShape
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.viewinterop.AndroidView
 import com.afam.pura.camera.CameraController
@@ -24,6 +30,7 @@ import kotlinx.coroutines.delay
 @Composable
 fun Viewfinder(
     controller: CameraController?,
+    geometry: PreviewGeometry,
     peaking: Boolean,
     zebra: Boolean,
     sampleLuma: Boolean,
@@ -33,6 +40,15 @@ fun Viewfinder(
 ) {
     if (LocalInspectionMode.current) return
     val holder = remember { TextureHolder() }
+    val density = LocalDensity.current
+    val topPx = with(density) { geometry.top.toPx() }
+    val heightPx = with(density) { geometry.height.toPx() }
+    val shape = remember(topPx, heightPx, geometry.corner) {
+        val r = with(density) { geometry.corner.toPx() }
+        GenericShape { size, _ ->
+            addRoundRect(RoundRect(0f, topPx, size.width, topPx + heightPx, CornerRadius(r, r)))
+        }
+    }
 
     DisposableEffect(controller) {
         holder.controller = controller
@@ -41,15 +57,19 @@ fun Viewfinder(
     }
 
     AndroidView(
-        modifier = modifier,
+        modifier = modifier.clip(shape),
         factory = { ctx ->
             TextureView(ctx).apply {
-                isOpaque = true
+                isOpaque = false
                 surfaceTextureListener = holder
                 holder.view = this
+                addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ -> holder.applyTransform(v as TextureView) }
             }
         },
         update = { view ->
+            holder.top = topPx
+            holder.height = heightPx
+            holder.applyTransform(view)
             if (Build.VERSION.SDK_INT >= 33) {
                 val key = (if (peaking) 1 else 0) or (if (zebra) 2 else 0)
                 if (holder.effectKey != key) {
@@ -102,13 +122,37 @@ private class TextureHolder : TextureView.SurfaceTextureListener {
     var texture: SurfaceTexture? = null
     var view: TextureView? = null
     var effectKey = 0
+    var top = 0f
+    var height = 0f
+    private val matrix = Matrix()
+    private var applied = ""
+
+    /**
+     * La TextureView stira i fotogrammi su tutta la sua area: li riportiamo nel rettangolo
+     * dell'anteprima, con le proporzioni esatte del flusso della fotocamera.
+     */
+    fun applyTransform(v: TextureView) {
+        val vh = v.height
+        if (vh <= 0 || height <= 0f) return
+        val key = "$top/$height/$vh"
+        if (key == applied) return
+        applied = key
+        matrix.reset()
+        matrix.setScale(1f, height / vh)
+        matrix.postTranslate(0f, top)
+        v.setTransform(matrix)
+        v.invalidate()
+    }
 
     override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
         texture = surface
         controller?.attachTexture(surface)
     }
 
-    override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) = Unit
+    override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {
+        // La TextureView ha reimpostato la dimensione del buffer: si ripristina quella del sensore.
+        controller?.onTextureResized(surface)
+    }
 
     override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
         texture = null

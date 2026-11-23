@@ -179,6 +179,10 @@ class CameraController(
     private var afTriggered = false
     private var precaptureFrames = 0
     private var sawPrecapture = false
+    private var afTriggerSeen = false
+    // Autofocus continuo che non parte mai (alcuni driver): si passa alla messa a fuoco a comando.
+    private var continuousAfBroken = false
+    private var afInactiveFrames = 0
     private var pending: PendingShot? = null
 
     private class PendingShot(
@@ -220,6 +224,11 @@ class CameraController(
         handler.post { runCatching { sound.load(MediaActionSound.SHUTTER_CLICK) } }
     }
 
+    private companion object {
+        /** Il fuoco al tocco resta finché non muovi il telefono (o al massimo per 30 s). */
+        const val TAP_FOCUS_TIMEOUT = 30_000L
+    }
+
     // =====================================================================================
     // API pubblica
     // =====================================================================================
@@ -254,6 +263,14 @@ class CameraController(
             texture = st
         }
         if (started) replan(force = sessionPlan == null)
+    }
+
+    /** La TextureView ha cambiato dimensione: si rimette la risoluzione giusta e si riconfigura. */
+    fun onTextureResized(st: SurfaceTexture) = handler.post {
+        if (texture !== st) return@post
+        val p = plan ?: return@post
+        st.setDefaultBufferSize(p.preview.width, p.preview.height)
+        if (session != null && !recording) createSession()
     }
 
     /** La TextureView è stata distrutta: si chiude la sessione e poi si libera la texture. */
@@ -430,6 +447,8 @@ class CameraController(
         if (changed && plan?.cameraId != sessionPlan?.cameraId) {
             zoom = 1f
             loadWbCalibration(spec)
+            continuousAfBroken = false
+            afInactiveFrames = 0
         }
         if (newPlan.maxRes) zoom = 1f
         publishPlanStatus(newPlan)
@@ -792,7 +811,7 @@ class CameraController(
             }
             else -> {
                 val wanted = if (p.video) CameraMetadata.CONTROL_AF_MODE_CONTINUOUS_VIDEO else CameraMetadata.CONTROL_AF_MODE_CONTINUOUS_PICTURE
-                val mode = if (spec.has(spec.afModes, wanted)) wanted else CameraMetadata.CONTROL_AF_MODE_AUTO
+                val mode = if (spec.has(spec.afModes, wanted) && !continuousAfBroken) wanted else CameraMetadata.CONTROL_AF_MODE_AUTO
                 b.set(CaptureRequest.CONTROL_AF_MODE, mode)
             }
         }
@@ -872,7 +891,8 @@ class CameraController(
             ImageProfile.CUSTOM -> s.noiseReduction
         }
         val edge = when (s.profile) {
-            ImageProfile.NATURAL -> Sharpening.OFF
+            // Senza alcuna nitidezza l'ISP Qualcomm produce immagini che sembrano sfocate.
+            ImageProfile.NATURAL -> Sharpening.FAST
             ImageProfile.STANDARD -> Sharpening.HIGH_QUALITY
             ImageProfile.CUSTOM -> s.sharpening
         }
@@ -972,6 +992,7 @@ class CameraController(
             }
         }
 
+        watchContinuousAf(request)
         processShotState(request, result)
 
         val now = SystemClock.uptimeMillis()
@@ -985,6 +1006,22 @@ class CameraController(
                 zoom = result.get(CaptureResult.CONTROL_ZOOM_RATIO) ?: zoom,
                 flashRequired = aeState == CaptureResult.CONTROL_AE_STATE_FLASH_REQUIRED,
             )
+        }
+    }
+
+    private fun watchContinuousAf(request: CaptureRequest) {
+        if (continuousAfBroken) return
+        val mode = request.get(CaptureRequest.CONTROL_AF_MODE)
+        if (mode != CameraMetadata.CONTROL_AF_MODE_CONTINUOUS_PICTURE && mode != CameraMetadata.CONTROL_AF_MODE_CONTINUOUS_VIDEO) {
+            afInactiveFrames = 0
+            return
+        }
+        if (afState == CaptureResult.CONTROL_AF_STATE_INACTIVE) afInactiveFrames++ else afInactiveFrames = 0
+        if (afInactiveFrames >= 60 && shot == Shot.IDLE) {
+            // Dopo ~2 s senza alcuna ricerca: modalità AUTO con una messa a fuoco al centro.
+            continuousAfBroken = true
+            startRepeating()
+            capturePreviewOnce { it.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_START) }
         }
     }
 
@@ -1067,7 +1104,7 @@ class CameraController(
         } else {
             startRepeating()
         }
-        if (!lock && !recording) handler.postDelayed(resetFocus, 6000)
+        if (!lock && !recording) handler.postDelayed(resetFocus, TAP_FOCUS_TIMEOUT)
     }
 
     private fun clearFocusInternal(sendCancel: Boolean) {
@@ -1101,14 +1138,17 @@ class CameraController(
         val needPrecapture = spec.hasFlash && !manualExp && (s.flash == FlashMode.AUTO || s.flash == FlashMode.ON)
         val manualFocus = manualActive() && s.manual.focus != null
         val af = afState
+        // In continuo si blocca sempre il fuoco prima dello scatto: se l'obiettivo è già a fuoco
+        // il blocco è immediato, altrimenti si aspetta la fine della ricerca (max 1,5 s).
         val needAf = spec.hasAutoFocus && !manualFocus && when {
-            focusRegion != null -> af == CaptureResult.CONTROL_AF_STATE_ACTIVE_SCAN
-            else -> af != null && af != CaptureResult.CONTROL_AF_STATE_PASSIVE_FOCUSED &&
-                af != CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED
+            focusRegion != null -> af == CaptureResult.CONTROL_AF_STATE_ACTIVE_SCAN ||
+                af == CaptureResult.CONTROL_AF_STATE_INACTIVE
+            else -> af != CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED
         }
         handler.removeCallbacks(resetFocus)
         _status.update { it.copy(busy = true) }
         afTriggered = false
+        afTriggerSeen = false
         when {
             needPrecapture -> {
                 shot = Shot.WAIT_PRECAPTURE
@@ -1124,11 +1164,13 @@ class CameraController(
             }
             needAf -> {
                 shot = Shot.WAIT_AF
-                if (focusRegion == null) {
+                if (focusRegion == null || af == CaptureResult.CONTROL_AF_STATE_INACTIVE) {
                     afTriggered = true
                     capturePreviewOnce { it.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_START) }
+                } else {
+                    afTriggerSeen = true
                 }
-                handler.postDelayed(shotTimeout, 1200)
+                handler.postDelayed(shotTimeout, 1500)
             }
             else -> captureStill()
         }
@@ -1142,8 +1184,10 @@ class CameraController(
     }
 
     private fun processShotState(request: CaptureRequest, result: TotalCaptureResult) {
+        if (request.get(CaptureRequest.CONTROL_AF_TRIGGER) == CameraMetadata.CONTROL_AF_TRIGGER_START) afTriggerSeen = true
         when (shot) {
-            Shot.WAIT_AF -> if (afDone()) captureStill()
+            // Si considerano solo i fotogrammi successivi al comando di messa a fuoco.
+            Shot.WAIT_AF -> if (afTriggerSeen && afDone()) captureStill()
             Shot.WAIT_PRECAPTURE -> {
                 if (request.get(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER) == CameraMetadata.CONTROL_AE_PRECAPTURE_TRIGGER_START) {
                     precaptureFrames = 1
@@ -1152,7 +1196,7 @@ class CameraController(
                 if (ae == CaptureResult.CONTROL_AE_STATE_PRECAPTURE) sawPrecapture = true
                 val aeDone = ae == null || (sawPrecapture && ae != CaptureResult.CONTROL_AE_STATE_PRECAPTURE) ||
                     (!sawPrecapture && precaptureFrames >= 4 && ae != CaptureResult.CONTROL_AE_STATE_SEARCHING)
-                if (precaptureFrames > 0 && aeDone && (!afTriggered || afDone())) captureStill()
+                if (precaptureFrames > 0 && aeDone && (!afTriggered || (afTriggerSeen && afDone()))) captureStill()
             }
             else -> Unit
         }
@@ -1293,13 +1337,13 @@ class CameraController(
         val p = sessionPlan
         shot = Shot.IDLE
         _status.update { it.copy(busy = false) }
-        if (afTriggered && focusRegion == null) {
+        if (afTriggered && focusRegion == null && !continuousAfBroken) {
             afTriggered = false
             capturePreviewOnce { it.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_CANCEL) }
             startRepeating()
         }
         afTriggered = false
-        if (focusRegion != null && !aeAfLocked && !pendingLock && p != null) handler.postDelayed(resetFocus, 6000)
+        if (focusRegion != null && !aeAfLocked && !pendingLock && p != null) handler.postDelayed(resetFocus, TAP_FOCUS_TIMEOUT)
     }
 
     private fun saveShot(p: PendingShot) {

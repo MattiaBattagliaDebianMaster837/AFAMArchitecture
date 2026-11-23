@@ -6,6 +6,10 @@ import android.app.Application
 import android.content.ContentUris
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.hardware.camera2.CameraManager
 import android.location.Location
 import android.location.LocationListener
@@ -40,9 +44,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.abs
 
 /** Foto scattata per un'altra app, in attesa di conferma. */
 class IntentShot(val bytes: ByteArray, val preview: Bitmap?)
@@ -113,6 +120,13 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
             c.deviceOrientation = _orientation.value
             _controller.value = c
             launch { c.status.collect { _status.value = it } }
+            // Il fuoco al tocco resta finché il telefono non si sposta (come nelle fotocamere di sistema).
+            launch {
+                c.status
+                    .map { st -> st.focusPoint?.takeIf { !st.aeAfLocked && !st.recording } }
+                    .distinctUntilChanged()
+                    .collect { point -> if (point != null) startMotionWatch() else stopMotionWatch() }
+            }
             launch { c.live.collect { _live.value = it } }
             launch { c.events.collect { onEvent(it) } }
             if (resumed) startCamera()
@@ -141,6 +155,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         _countdown.value = 0
         _controller.value?.stop()
         stopLocation()
+        stopMotionWatch()
     }
 
     private fun startCamera() {
@@ -156,6 +171,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     override fun onCleared() {
+        stopMotionWatch()
         _controller.value?.release()
         stopLocation()
         runCatching { tone?.release() }
@@ -368,6 +384,47 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                     }
             }
         }
+    }
+
+    // ---- Movimento del telefono (per sbloccare il fuoco al tocco) ----
+
+    private var motionListener: SensorEventListener? = null
+
+    private fun startMotionWatch() {
+        stopMotionWatch()
+        if (!resumed) return
+        val sm = getApplication<Application>().getSystemService(SensorManager::class.java) ?: return
+        val sensor = sm.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR)
+            ?: sm.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR) ?: return
+        val anchor = FloatArray(9)
+        val current = FloatArray(9)
+        val angles = FloatArray(3)
+        var hasAnchor = false
+        val listener = object : SensorEventListener {
+            override fun onSensorChanged(e: SensorEvent) {
+                if (!hasAnchor) {
+                    SensorManager.getRotationMatrixFromVector(anchor, e.values)
+                    hasAnchor = true
+                    return
+                }
+                SensorManager.getRotationMatrixFromVector(current, e.values)
+                SensorManager.getAngleChange(angles, current, anchor)
+                if (angles.any { abs(it) > 0.15f }) {
+                    stopMotionWatch()
+                    clearFocus()
+                }
+            }
+
+            override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
+        }
+        motionListener = listener
+        sm.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_UI)
+    }
+
+    private fun stopMotionWatch() {
+        val l = motionListener ?: return
+        motionListener = null
+        getApplication<Application>().getSystemService(SensorManager::class.java)?.unregisterListener(l)
     }
 
     // ---- Posizione (solo se attivata) ----

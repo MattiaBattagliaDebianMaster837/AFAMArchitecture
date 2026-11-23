@@ -8,6 +8,11 @@ import android.graphics.PointF
 import android.graphics.Shader
 import android.util.Size
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -78,8 +83,13 @@ class ScreenshotTest {
         val preview = scene(1080, 1440, 3).asImageBitmap()
         compose.setContent {
             PuraTheme {
-                CameraLayout(state = state, actions = NoActions, message = null, shutterBlink = 0) { m ->
-                    Image(preview, contentDescription = null, contentScale = ContentScale.Crop, modifier = m)
+                CameraLayout(state = state, actions = NoActions, message = null, shutterBlink = 0) { g ->
+                    Image(
+                        preview,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.offset(y = g.top).size(g.width, g.height).clip(RoundedCornerShape(g.corner)),
+                    )
                 }
             }
         }

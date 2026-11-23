@@ -1,5 +1,6 @@
 package com.afam.pura.ui
 
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -7,6 +8,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.afam.pura.CameraViewModel
@@ -100,15 +102,16 @@ fun CameraScreen(
         actions = actions,
         message = message,
         shutterBlink = blink,
-    ) { modifier ->
+    ) { geometry ->
         Viewfinder(
             controller = controller,
+            geometry = geometry,
             peaking = settings.peaking && manualFocus,
             zebra = settings.zebra && state.manualActive,
             sampleLuma = status.needsLuma,
             wantHistogram = settings.histogram,
             onLuma = { mean, hist -> vm.onPreviewLuma(mean, hist) },
-            modifier = modifier,
+            modifier = Modifier.fillMaxSize(),
         )
     }
 }

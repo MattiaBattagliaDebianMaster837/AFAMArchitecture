@@ -148,7 +148,8 @@ fun ProPanel(
                 val value = when (p) {
                     ProParam.ISO -> m.iso?.toString() ?: if (live.iso > 0) "A ${live.iso}" else "AUTO"
                     ProParam.SHUTTER -> m.exposureNs?.let { Stops.formatShutter(it) } ?: if (live.exposureNs > 0) "A ${Stops.formatShutter(live.exposureNs)}" else "AUTO"
-                    ProParam.FOCUS -> m.focus?.let { Stops.formatFocus(it) } ?: "AF"
+                    ProParam.FOCUS -> m.focus?.let { Stops.formatFocus(it) }
+                        ?: if (cam.hasAutoFocus && live.focus > 0f) "AF ${Stops.formatFocus(live.focus)}" else "AF"
                     ProParam.WB -> if (m.wb == WhiteBalance.KELVIN) "${m.kelvin}K" else m.wb.label
                     ProParam.EV -> Stops.formatEv(m.ev, evStep)
                 }

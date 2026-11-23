@@ -106,7 +106,7 @@ fun CameraLayout(
     actions: CameraActions,
     message: String?,
     shutterBlink: Int,
-    viewfinder: @Composable (Modifier) -> Unit,
+    viewfinder: @Composable (PreviewGeometry) -> Unit,
 ) {
     val s = state.settings
     var showSettings by remember { mutableStateOf(false) }
@@ -161,6 +161,10 @@ fun CameraLayout(
         val captureTop = previewTop + (previewH - captureH) / 2
 
         // ---- Anteprima e gesti ----
+        // La TextureView occupa sempre tutto lo schermo (dimensione fissa): così Android non
+        // reimposta mai la risoluzione del flusso, che resta quella scelta per il sensore.
+        val corner = if (previewTop > topInset) 14.dp else 0.dp
+        viewfinder(PreviewGeometry(top = previewTop, height = previewH, width = w, corner = corner))
         val haptic = LocalHapticFeedback.current
         val currentState by rememberUpdatedState(state)
         val evPerPx = with(density) { 1f / 22.dp.toPx() }
@@ -169,7 +173,7 @@ fun CameraLayout(
             Modifier
                 .offset(y = previewTop)
                 .size(w, previewH)
-                .clip(RoundedCornerShape(if (previewTop > topInset) 14.dp else 0.dp))
+                .clip(RoundedCornerShape(corner))
                 .pointerInput(Unit) {
                     detectTapGestures(
                         onTap = { o -> actions.focusAt(o.x / size.width, o.y / size.height, false) },
@@ -224,7 +228,6 @@ fun CameraLayout(
                     }
                 },
         ) {
-            viewfinder(Modifier.fillMaxSize())
             // Nasconde l'anteprima mentre la sessione si riconfigura.
             val black by animateFloatAsState(if (state.status.ready) 0f else 1f, tween(if (state.status.ready) 220 else 60), label = "black")
             if (black > 0.01f) Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = black)))
@@ -358,6 +361,9 @@ fun CameraLayout(
         }
     }
 }
+
+/** Posizione dell'anteprima sullo schermo. */
+data class PreviewGeometry(val top: Dp, val height: Dp, val width: Dp, val corner: Dp)
 
 private fun nextFlashLabel(state: UiState): String? {
     if (!state.camera.hasFlash) return null

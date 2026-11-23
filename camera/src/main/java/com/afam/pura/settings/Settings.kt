@@ -24,7 +24,7 @@ enum class Resolution { STANDARD, MAXIMUM }
 
 /** Preimpostazioni dell'elaborazione d'immagine. Nessuna usa l'AI: sono le pipeline dell'ISP. */
 enum class ImageProfile(val label: String, val description: String) {
-    NATURAL("Naturale", "Elaborazione minima: riduzione rumore leggera e nessuna nitidezza artificiale."),
+    NATURAL("Naturale", "Elaborazione minima: riduzione rumore e nitidezza leggere, colori e grana reali."),
     STANDARD("Standard", "Elaborazione classica dell'ISP in alta qualità, senza AI."),
     CUSTOM("Personalizzato", "Scegli tu riduzione rumore, nitidezza e curva tonale."),
 }
@@ -87,7 +87,7 @@ data class Settings(
     // Elaborazione
     val profile: ImageProfile = ImageProfile.NATURAL,
     val noiseReduction: NoiseReduction = NoiseReduction.MINIMAL,
-    val sharpening: Sharpening = Sharpening.OFF,
+    val sharpening: Sharpening = Sharpening.FAST,
     val tone: ToneCurve = ToneCurve.STANDARD,
     val distortionCorrection: Boolean = true,
     val ois: Boolean = true,
