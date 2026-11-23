@@ -1638,7 +1638,13 @@ class CameraController(
         }
         io.launch {
             try {
-                val jpeg = m.toJpeg(b.quality.coerceIn(70, 100))
+                val jpeg = try {
+                    m.toJpeg(b.quality.coerceIn(70, 100))
+                } catch (e: OutOfMemoryError) {
+                    // Memoria scarsa: si riprova dopo aver liberato il possibile.
+                    System.gc()
+                    m.toJpeg(b.quality.coerceIn(70, 100))
+                }
                 b.merger = null
                 val withExif = MultiFrameMerger.writeExif(
                     jpeg = jpeg,
@@ -1660,7 +1666,8 @@ class CameraController(
                 if (uri != null) _events.tryEmit(CamEvent.Saved(uri, thumb, video = false))
                 else _events.tryEmit(CamEvent.Message("Impossibile salvare la foto"))
             } catch (t: Throwable) {
-                _events.tryEmit(CamEvent.Message("Fusione non riuscita"))
+                // Il nome dell'errore aiuta a capire cosa non va su un telefono specifico.
+                _events.tryEmit(CamEvent.Message("Salvataggio non riuscito (${t.javaClass.simpleName}: ${t.message?.take(60)})"))
             } finally {
                 merging = false
             }

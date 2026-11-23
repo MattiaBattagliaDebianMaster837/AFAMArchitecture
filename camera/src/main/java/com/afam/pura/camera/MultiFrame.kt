@@ -415,8 +415,10 @@ class MultiFrameMerger(
             location: Location?,
             frames: Int,
         ): ByteArray {
-            val tmp = File.createTempFile("mf", ".jpg", cacheDir)
+            var tmp: File? = null
             return try {
+                // Attenzione: Java vuole un prefisso di almeno 3 caratteri.
+                tmp = File.createTempFile("pura_mf", ".jpg", cacheDir)
                 tmp.writeBytes(jpeg)
                 val exif = ExifInterface(tmp)
                 val now = Date()
@@ -448,9 +450,10 @@ class MultiFrameMerger(
                 exif.saveAttributes()
                 tmp.readBytes()
             } catch (t: Throwable) {
+                // Senza EXIF la foto si salva comunque.
                 jpeg
             } finally {
-                tmp.delete()
+                tmp?.delete()
             }
         }
     }
