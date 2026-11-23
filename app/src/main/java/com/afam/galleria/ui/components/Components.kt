@@ -341,7 +341,7 @@ fun SegmentedControl(
                 .width(segment)
                 .fillMaxHeight()
                 .clip(RoundedCornerShape(50))
-                .background(if (c.isDark) Color.White.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.85f))
+                .background(if (c.isDark) Color.White.copy(alpha = 0.16f) else Color.Black.copy(alpha = 0.08f))
         )
         Row(Modifier.fillMaxSize()) {
             options.forEachIndexed { i, label ->
