@@ -120,6 +120,11 @@ object Thumbs {
     }
 
     fun clear() = cache.evictAll()
+
+    /** Solo per i test: inserisce una miniatura in cache. */
+    internal fun debugPut(item: MediaItem, size: Int, bitmap: Bitmap) {
+        cache.put(key(item, size), bitmap)
+    }
 }
 
 /** Miniatura quadrata (o con il [contentScale] richiesto) di un elemento. */

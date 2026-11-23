@@ -73,6 +73,16 @@ class Navigator {
 /** Posizioni delle miniature visibili, per animare l'apertura/chiusura del visualizzatore. */
 class ThumbRegistry {
     private val map = HashMap<Long, Rect>()
+    private val providers = ArrayList<(Long) -> Rect?>()
+
+    /**
+     * Le griglie registrano una funzione che calcola la posizione di una miniatura solo
+     * quando serve, invece di aggiornarla a ogni fotogramma di scorrimento.
+     */
+    fun addProvider(provider: (Long) -> Rect?): () -> Unit {
+        providers += provider
+        return { providers.remove(provider) }
+    }
 
     fun put(id: Long, rect: Rect) {
         map[id] = rect
@@ -82,7 +92,12 @@ class ThumbRegistry {
         if (rect == null || map[id] == rect) map.remove(id)
     }
 
-    operator fun get(id: Long): Rect? = map[id]
+    operator fun get(id: Long): Rect? {
+        for (i in providers.indices.reversed()) {
+            providers[i](id)?.let { return it }
+        }
+        return map[id]
+    }
 }
 
 val LocalNavigator = staticCompositionLocalOf<Navigator> { error("Navigator mancante") }

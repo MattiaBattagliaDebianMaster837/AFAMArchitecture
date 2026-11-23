@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Apps
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Info
@@ -41,6 +42,7 @@ import com.afam.galleria.ui.components.LocalOverlay
 import com.afam.galleria.ui.components.SheetAction
 import com.afam.galleria.ui.components.Thumbs
 import com.afam.galleria.ui.nav.LocalNavigator
+import com.afam.galleria.ui.glass.GlassScreen
 import com.afam.galleria.ui.theme.Ios
 import com.afam.galleria.util.Dates
 import com.afam.galleria.util.ShareUtil
@@ -61,11 +63,9 @@ fun SettingsScreen(vm: GalleryViewModel) {
         canManage = vm.canManageMedia()
     }
 
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(c.groupedBackground)
-    ) {
+    GlassScreen(
+        background = c.groupedBackground,
+        content = {
         LazyColumn(
             Modifier.fillMaxSize(),
             contentPadding = PaddingValues(top = statusTop + 56.dp, bottom = navBottom + 32.dp),
@@ -92,6 +92,21 @@ fun SettingsScreen(vm: GalleryViewModel) {
                                 },
                             )
                         },
+                    )
+                }
+                Spacer(Modifier.height(20.dp))
+            }
+            item {
+                GroupedSection(
+                    header = "Aspetto",
+                    footer = "Liquid Glass usa sfocatura e rifrazione in tempo reale (Android 12 o successivo). Disattivalo per risparmiare batteria sui telefoni meno recenti.",
+                ) {
+                    ListRow(
+                        title = "Effetto Liquid Glass",
+                        icon = Icons.Outlined.AutoAwesome,
+                        chevron = false,
+                        showDivider = false,
+                        trailing = { IosSwitch(local.glassEffects) { vm.setGlassEffects(it) } },
                     )
                 }
                 Spacer(Modifier.height(20.dp))
@@ -168,6 +183,9 @@ fun SettingsScreen(vm: GalleryViewModel) {
                 }
             }
         }
+        },
+        overlay = {
         IosNavBar(title = "Impostazioni", backLabel = "Indietro", onBack = { nav.pop() })
-    }
+        },
+    )
 }

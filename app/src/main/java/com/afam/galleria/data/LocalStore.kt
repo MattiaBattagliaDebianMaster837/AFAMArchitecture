@@ -29,6 +29,8 @@ data class LocalData(
     val showHiddenAlbum: Boolean = true,
     val importedSystemFavorites: Boolean = false,
     val gridColumns: Int = 4,
+    /** Effetto Liquid Glass completo (sfocatura e rifrazione). */
+    val glassEffects: Boolean = true,
 )
 
 class LocalStore(context: Context) {
@@ -88,6 +90,7 @@ class LocalStore(context: Context) {
                 showHiddenAlbum = o.optBoolean("showHiddenAlbum", true),
                 importedSystemFavorites = o.optBoolean("importedSystemFavorites", false),
                 gridColumns = o.optInt("gridColumns", 4),
+                glassEffects = o.optBoolean("glassEffects", true),
             )
         } catch (e: Exception) {
             Log.w("LocalStore", "load failed", e)
@@ -113,6 +116,7 @@ class LocalStore(context: Context) {
         put("showHiddenAlbum", d.showHiddenAlbum)
         put("importedSystemFavorites", d.importedSystemFavorites)
         put("gridColumns", d.gridColumns)
+        put("glassEffects", d.glassEffects)
     }
 
     private fun JSONArray?.toLongList(): List<Long> {

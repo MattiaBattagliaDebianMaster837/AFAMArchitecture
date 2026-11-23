@@ -63,6 +63,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.afam.galleria.GalleryViewModel
 import com.afam.galleria.data.AlbumInfo
 import com.afam.galleria.data.MediaItem
+import com.afam.galleria.ui.glass.glass
 import com.afam.galleria.ui.theme.Ios
 import com.afam.galleria.ui.theme.IosType
 import kotlinx.coroutines.delay
@@ -225,8 +226,7 @@ fun OverlayHost(state: OverlayState, vm: GalleryViewModel) {
             state.toast?.let { last = it }
             Box(
                 Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(if (c.isDark) Color(0xF22C2C2E) else Color(0xF2333336))
+                    .glass(RoundedCornerShape(50), tint = Color(0xC71C1C1E))
                     .padding(horizontal = 20.dp, vertical = 12.dp)
             ) {
                 Text(last, style = IosType.subhead.copy(fontWeight = FontWeight.Medium), color = Color.White)
@@ -238,8 +238,8 @@ fun OverlayHost(state: OverlayState, vm: GalleryViewModel) {
 @Composable
 private fun ActionSheet(spec: ActionSheetSpec, onDismiss: () -> Unit) {
     val c = Ios.colors
-    val groupBg = if (c.isDark) Color(0xF02C2C2E) else Color(0xF5F7F7F7)
-    val cancelBg = if (c.isDark) Color(0xFF2C2C2E) else Color.White
+    val groupBg = if (c.isDark) Color(0xC8232326) else Color(0xD6F9F9FB)
+    val cancelBg = if (c.isDark) Color(0xE02C2C2E) else Color(0xEFFFFFFF)
     Column(
         Modifier
             .fillMaxWidth()
@@ -250,8 +250,7 @@ private fun ActionSheet(spec: ActionSheetSpec, onDismiss: () -> Unit) {
         Column(
             Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
-                .background(groupBg)
+                .glass(RoundedCornerShape(28.dp), tint = groupBg, blurRadius = 14.dp)
         ) {
             if (spec.title != null || spec.message != null) {
                 Column(
@@ -294,8 +293,7 @@ private fun ActionSheet(spec: ActionSheetSpec, onDismiss: () -> Unit) {
             textAlign = TextAlign.Center,
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
-                .background(cancelBg)
+                .glass(RoundedCornerShape(28.dp), tint = cancelBg, blurRadius = 14.dp)
                 .clickable(onClick = onDismiss)
                 .padding(vertical = 16.dp),
         )
@@ -323,9 +321,12 @@ private fun PromptDialog(spec: PromptSpec, onDismiss: () -> Unit) {
     ) {
         Column(
             Modifier
-                .width(290.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(if (c.isDark) Color(0xFF2C2C2E) else Color(0xFFF2F2F2))
+                .width(300.dp)
+                .glass(
+                    RoundedCornerShape(30.dp),
+                    tint = if (c.isDark) Color(0xD92A2A2D) else Color(0xE6F6F6F8),
+                    blurRadius = 14.dp,
+                )
                 .plainClickable { }
         ) {
             Column(
@@ -418,8 +419,11 @@ private fun AlbumPickerSheet(
         Modifier
             .fillMaxWidth()
             .heightIn(max = maxHeight)
-            .clip(RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp))
-            .background(c.groupedBackground)
+            .glass(
+                RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
+                tint = if (c.isDark) Color(0xD91C1C1E) else Color(0xE6F2F2F7),
+                blurRadius = 16.dp,
+            )
             .plainClickable { }
             .navigationBarsPadding()
     ) {

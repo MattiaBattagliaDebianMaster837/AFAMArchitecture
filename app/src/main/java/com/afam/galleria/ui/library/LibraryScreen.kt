@@ -79,6 +79,7 @@ import com.afam.galleria.ui.components.SelectionState
 import com.afam.galleria.ui.components.SheetAction
 import com.afam.galleria.ui.components.Thumbs
 import com.afam.galleria.ui.components.iosClickable
+import com.afam.galleria.ui.glass.GlassBox
 import com.afam.galleria.ui.nav.LocalNavigator
 import com.afam.galleria.ui.nav.LocalThumbRegistry
 import com.afam.galleria.ui.nav.Route
@@ -180,153 +181,169 @@ fun LibraryScreen(
         }
     }
 
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(c.background)
-    ) {
-        when {
-            !library.loaded -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = c.secondaryLabel)
+    GlassBox(
+        modifier = Modifier.fillMaxSize(),
+        content = {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(c.background)
+            ) {
+                when {
+                    !library.loaded -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = c.secondaryLabel)
+                    }
+                    items.isEmpty() -> EmptyState(
+                        Icons.Outlined.PhotoLibrary,
+                        "Nessuna foto o video",
+                        "Le foto e i video che scatti o salvi sul telefono appariranno qui.",
+                        Modifier.fillMaxSize(),
+                    )
+                    else -> Crossfade(targetState = mode, animationSpec = tween(220), label = "mode") { m ->
+                        when (m) {
+                            MODE_ALL -> MediaGrid(
+                                items = items,
+                                state = gridState,
+                                columns = library.local.gridColumns,
+                                selection = selection,
+                                favorites = library.favorites,
+                                onOpen = { item, rect -> nav.push(Route.Viewer(Keys.ALL, item.id, origin = rect)) },
+                                onColumnsChange = { vm.setGridColumns(it) },
+                                contentPadding = PaddingValues(top = topPad, bottom = bottomPad),
+                                fastScrollTop = topPad,
+                                fastScrollBottom = bottomPad,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                            MODE_DAYS -> DaysView(
+                                days = days,
+                                state = daysState,
+                                library = library,
+                                contentPadding = PaddingValues(top = topPad, bottom = bottomPad),
+                            )
+                            MODE_MONTHS -> MonthsView(
+                                months = months,
+                                state = monthsState,
+                                library = library,
+                                contentPadding = PaddingValues(top = topPad, bottom = bottomPad),
+                                onOpen = { month ->
+                                    val target = if (newestFirst) month.items.first() else month.items.last()
+                                    val index = items.indexOfFirst { it.id == target.id }.coerceAtLeast(0)
+                                    scope.launch {
+                                        gridState.scrollToItem(index)
+                                        gridPositioned = true
+                                        mode = MODE_ALL
+                                    }
+                                },
+                            )
+                            else -> YearsView(
+                                years = years,
+                                state = yearsState,
+                                library = library,
+                                contentPadding = PaddingValues(top = topPad, bottom = bottomPad),
+                                onOpen = { year ->
+                                    val index = months.indexOfFirst { it.year == year.year }.coerceAtLeast(0)
+                                    scope.launch {
+                                        monthsState.scrollToItem(index)
+                                        monthsPositioned = true
+                                        mode = MODE_MONTHS
+                                    }
+                                },
+                            )
+                        }
+                    }
+                }
             }
-            items.isEmpty() -> EmptyState(
-                Icons.Outlined.PhotoLibrary,
-                "Nessuna foto o video",
-                "Le foto e i video che scatti o salvi sul telefono appariranno qui.",
-                Modifier.fillMaxSize(),
+
+            // Intestazione sfumata con data e pulsanti.
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(topPad + 28.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            0f to c.background.copy(alpha = 0.96f),
+                            0.55f to c.background.copy(alpha = 0.80f),
+                            1f to Color.Transparent,
+                        )
+                    )
             )
-            else -> Crossfade(targetState = mode, animationSpec = tween(220), label = "mode") { m ->
-                when (m) {
-                    MODE_ALL -> MediaGrid(
-                        items = items,
-                        state = gridState,
-                        columns = library.local.gridColumns,
-                        selection = selection,
-                        favorites = library.favorites,
-                        onOpen = { item, rect -> nav.push(Route.Viewer(Keys.ALL, item.id, origin = rect)) },
-                        onColumnsChange = { vm.setGridColumns(it) },
-                        contentPadding = PaddingValues(top = topPad, bottom = bottomPad),
-                        fastScrollTop = topPad,
-                        fastScrollBottom = bottomPad,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                    MODE_DAYS -> DaysView(
-                        days = days,
-                        state = daysState,
-                        library = library,
-                        contentPadding = PaddingValues(top = topPad, bottom = bottomPad),
-                    )
-                    MODE_MONTHS -> MonthsView(
-                        months = months,
-                        state = monthsState,
-                        library = library,
-                        contentPadding = PaddingValues(top = topPad, bottom = bottomPad),
-                        onOpen = { month ->
-                            val target = if (newestFirst) month.items.first() else month.items.last()
-                            val index = items.indexOfFirst { it.id == target.id }.coerceAtLeast(0)
-                            scope.launch {
-                                gridState.scrollToItem(index)
-                                gridPositioned = true
-                                mode = MODE_ALL
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .height(56.dp)
+                    .padding(start = 16.dp, end = 150.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        if (selection.active) {
+                            when (selection.count) {
+                                0 -> "Seleziona elementi"
+                                1 -> "1 elemento"
+                                else -> "${selection.count} elementi"
                             }
-                        },
-                    )
-                    else -> YearsView(
-                        years = years,
-                        state = yearsState,
-                        library = library,
-                        contentPadding = PaddingValues(top = topPad, bottom = bottomPad),
-                        onOpen = { year ->
-                            val index = months.indexOfFirst { it.year == year.year }.coerceAtLeast(0)
-                            scope.launch {
-                                monthsState.scrollToItem(index)
-                                monthsPositioned = true
-                                mode = MODE_MONTHS
-                            }
-                        },
+                        } else title,
+                        style = IosType.title2.copy(fontSize = 24.sp),
+                        color = c.label,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
-        }
-
-        // Intestazione sfumata con data e pulsanti.
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .height(topPad + 28.dp)
-                .background(
-                    Brush.verticalGradient(
-                        0f to c.background.copy(alpha = 0.96f),
-                        0.55f to c.background.copy(alpha = 0.80f),
-                        1f to Color.Transparent,
+        },
+        overlay = {
+            Row(
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .statusBarsPadding()
+                    .height(56.dp)
+                    .padding(end = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (mode == MODE_ALL && items.isNotEmpty()) {
+                    PillButton(
+                        text = if (selection.active) "Annulla" else "Seleziona",
+                        onClick = { if (selection.active) selection.exit() else selection.start() },
+                        highlighted = selection.active,
                     )
-                )
-        )
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .height(56.dp)
-                .padding(start = 16.dp, end = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(
-                    if (selection.active) {
-                        when (selection.count) {
-                            0 -> "Seleziona elementi"
-                            1 -> "1 elemento"
-                            else -> "${selection.count} elementi"
-                        }
-                    } else title,
-                    style = IosType.title2.copy(fontSize = 24.sp),
-                    color = c.label,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            if (mode == MODE_ALL && items.isNotEmpty()) {
-                PillButton(
-                    text = if (selection.active) "Annulla" else "Seleziona",
-                    onClick = { if (selection.active) selection.exit() else selection.start() },
-                    highlighted = selection.active,
-                )
-            }
-            if (!selection.active) {
-                Spacer(Modifier.padding(start = 8.dp))
-                PillIconButton(Icons.Rounded.MoreHoriz, "Altro", onClick = {
-                    overlay.actionSheet(
-                        actions = listOf(
-                            SheetAction(if (newestFirst) "Mostra prima i meno recenti" else "Mostra prima i più recenti") {
-                                vm.setNewestFirst(!newestFirst)
-                            },
-                            SheetAction("Apri Fotocamera") { ShareUtil.openCamera(context) },
-                            SheetAction("Impostazioni") { nav.push(Route.Settings) },
+                }
+                if (!selection.active) {
+                    Spacer(Modifier.padding(start = 8.dp))
+                    PillIconButton(Icons.Rounded.MoreHoriz, "Altro", onClick = {
+                        overlay.actionSheet(
+                            actions = listOf(
+                                SheetAction(if (newestFirst) "Mostra prima i meno recenti" else "Mostra prima i più recenti") {
+                                    vm.setNewestFirst(!newestFirst)
+                                },
+                                SheetAction("Apri Fotocamera") { ShareUtil.openCamera(context) },
+                                SheetAction("Impostazioni") { nav.push(Route.Settings) },
+                            )
                         )
-                    )
-                })
+                    })
+                }
             }
-        }
 
-        // Selettore Anni / Mesi / Giorni / Tutte le foto.
-        AnimatedVisibility(
-            visible = !selection.active && items.isNotEmpty(),
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = bottomBarHeight + 12.dp, start = 20.dp, end = 20.dp),
-            enter = fadeIn() + slideInVertically { it / 2 },
-            exit = fadeOut() + slideOutVertically { it / 2 },
-        ) {
-            SegmentedControl(
-                options = MODES,
-                selected = mode,
-                onSelect = { mode = it },
+            // Selettore Anni / Mesi / Giorni / Tutte le foto.
+            AnimatedVisibility(
+                visible = !selection.active && items.isNotEmpty(),
                 modifier = Modifier
-                    .widthIn(max = 420.dp)
-                    .fillMaxWidth(),
-            )
-        }
-    }
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = bottomBarHeight + 12.dp, start = 20.dp, end = 20.dp),
+                enter = fadeIn() + slideInVertically { it / 2 },
+                exit = fadeOut() + slideOutVertically { it / 2 },
+            ) {
+                SegmentedControl(
+                    options = MODES,
+                    selected = mode,
+                    onSelect = { mode = it },
+                    modifier = Modifier
+                        .widthIn(max = 420.dp)
+                        .fillMaxWidth(),
+                )
+            }
+        },
+    )
 }
 
 private fun coverOf(items: List<MediaItem>, library: Library): MediaItem? =

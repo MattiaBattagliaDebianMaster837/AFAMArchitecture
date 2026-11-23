@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -63,6 +64,8 @@ import com.afam.galleria.ui.components.iosClickable
 import com.afam.galleria.ui.nav.LocalNavigator
 import com.afam.galleria.ui.nav.LocalThumbRegistry
 import com.afam.galleria.ui.nav.Route
+import com.afam.galleria.ui.glass.GlassScreen
+import com.afam.galleria.ui.glass.GlassTextButton
 import com.afam.galleria.ui.theme.Ios
 import com.afam.galleria.ui.theme.IosType
 import com.afam.galleria.util.Dates
@@ -126,11 +129,9 @@ fun AlbumDetailScreen(vm: GalleryViewModel, key: String, isTop: Boolean) {
 
     BackHandler(enabled = isTop && selection.active) { selection.exit() }
 
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(c.background)
-    ) {
+    GlassScreen(
+        background = c.background,
+        content = {
         if (items.isEmpty() && library.loaded) {
             Column(
                 Modifier.fillMaxSize(),
@@ -173,6 +174,8 @@ fun AlbumDetailScreen(vm: GalleryViewModel, key: String, isTop: Boolean) {
             )
         }
 
+        },
+        overlay = {
         IosNavBar(
             title = title,
             backLabel = "Indietro",
@@ -208,7 +211,8 @@ fun AlbumDetailScreen(vm: GalleryViewModel, key: String, isTop: Boolean) {
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
         }
-    }
+        },
+    )
 }
 
 /** Selezione di foto dalla libreria da aggiungere a un album. */
@@ -223,11 +227,9 @@ fun AddToAlbumScreen(vm: GalleryViewModel, albumId: String) {
     val albumName = library.local.albums.firstOrNull { it.id == albumId }?.name ?: "Album"
     val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(c.background)
-    ) {
+    GlassScreen(
+        background = c.background,
+        content = {
         MediaGrid(
             items = items,
             state = gridState,
@@ -239,6 +241,8 @@ fun AddToAlbumScreen(vm: GalleryViewModel, albumId: String) {
             fastScrollTop = statusTop + 45.dp,
             modifier = Modifier.fillMaxSize(),
         )
+        },
+        overlay = {
         IosNavBar(
             title = if (selection.count == 0) "Aggiungi a «$albumName»" else "${selection.count} selezionati",
             backLabel = null,
@@ -254,14 +258,15 @@ fun AddToAlbumScreen(vm: GalleryViewModel, albumId: String) {
                 enabled = selection.count > 0,
             )
         }
-        BarTextButton(
+        GlassTextButton(
             "Annulla",
             { nav.pop() },
             modifier = Modifier
-                .padding(top = statusTop)
-                .padding(start = 8.dp, top = 2.dp),
+                .statusBarsPadding()
+                .padding(start = 12.dp, top = 8.dp),
         )
-    }
+        },
+    )
 }
 
 /** Eliminati di recente: elementi nel cestino di sistema, con i giorni rimanenti. */
@@ -281,11 +286,9 @@ fun TrashScreen(vm: GalleryViewModel, isTop: Boolean) {
     LaunchedEffect(Unit) { vm.loadTrash() }
     BackHandler(enabled = isTop && selection.active) { selection.exit() }
 
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(c.background)
-    ) {
+    GlassScreen(
+        background = c.background,
+        content = {
         if (trash != null && items.isEmpty()) {
             EmptyState(
                 Icons.Outlined.Delete,
@@ -314,6 +317,8 @@ fun TrashScreen(vm: GalleryViewModel, isTop: Boolean) {
                 modifier = Modifier.fillMaxSize(),
             )
         }
+        },
+        overlay = {
         IosNavBar(
             title = "Eliminati di recente",
             backLabel = "Album",
@@ -355,7 +360,8 @@ fun TrashScreen(vm: GalleryViewModel, isTop: Boolean) {
                 )
             }
         }
-    }
+        },
+    )
 }
 
 fun daysLeft(item: MediaItem): String? {
@@ -381,11 +387,9 @@ fun DuplicatesScreen(vm: GalleryViewModel) {
     val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val groups = library.duplicates
 
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(c.background)
-    ) {
+    GlassScreen(
+        background = c.background,
+        content = {
         if (groups.isEmpty()) {
             EmptyState(
                 Icons.Outlined.FileCopy,
@@ -474,6 +478,9 @@ fun DuplicatesScreen(vm: GalleryViewModel) {
                 }
             }
         }
+        },
+        overlay = {
         IosNavBar(title = "Duplicati", backLabel = "Album", onBack = { nav.pop() })
-    }
+        },
+    )
 }

@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,6 +25,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -32,6 +35,7 @@ import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Collections
+import androidx.compose.material.icons.rounded.Map
 import androidx.compose.material.icons.rounded.PhotoLibrary
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Icon
@@ -45,7 +49,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -54,10 +58,18 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.afam.galleria.ui.glass.GlassActions
+import com.afam.galleria.ui.glass.GlassIconButton
+import com.afam.galleria.ui.glass.GlassTextButton
+import com.afam.galleria.ui.glass.glass
 import com.afam.galleria.ui.theme.Ios
 import com.afam.galleria.ui.theme.IosType
 
 val SystemGray = Color(0xFF8E8E93)
+
+/** Altezza occupata dalla barra delle schede fluttuante (esclusa la barra di navigazione). */
+val TabBarHeight = 76.dp
 
 /** Click senza ripple, con l'effetto "attenuato" tipico di iOS quando premuto. */
 fun Modifier.iosClickable(enabled: Boolean = true, onClick: () -> Unit): Modifier = composed {
@@ -96,45 +108,90 @@ enum class MainTab(val title: String, val icon: ImageVector) {
     LIBRARY("Libreria", Icons.Rounded.PhotoLibrary),
     FOR_YOU("Per te", Icons.Rounded.AutoAwesome),
     ALBUMS("Album", Icons.Rounded.Collections),
+    MAP("Mappa", Icons.Rounded.Map),
     SEARCH("Cerca", Icons.Rounded.Search),
 }
 
+/**
+ * Barra delle schede Liquid Glass: capsula fluttuante con un indicatore che scorre
+ * sotto la scheda attiva e un pulsante Cerca separato, come su iOS 26.
+ */
 @Composable
-fun IosTabBar(selected: MainTab, onSelect: (MainTab) -> Unit, modifier: Modifier = Modifier) {
+fun GlassTabBar(selected: MainTab, onSelect: (MainTab) -> Unit, modifier: Modifier = Modifier) {
     val c = Ios.colors
-    Column(
+    val tabs = remember { MainTab.entries.filter { it != MainTab.SEARCH } }
+    Row(
         modifier
             .fillMaxWidth()
-            .background(c.bar)
-            .plainClickable { }
+            .navigationBarsPadding()
+            .padding(start = 14.dp, end = 14.dp, bottom = 8.dp, top = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Hairline()
-        Row(
+        BoxWithConstraints(
             Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .height(52.dp)
+                .weight(1f)
+                .height(62.dp)
+                .glass(RoundedCornerShape(50))
+                .padding(4.dp)
         ) {
-            MainTab.entries.forEach { tab ->
-                val active = tab == selected
-                val tint = if (active) c.accent else SystemGray
-                Column(
+            val itemWidth = maxWidth / tabs.size
+            val index = tabs.indexOf(selected)
+            val x by animateDpAsState(
+                itemWidth * index.coerceAtLeast(0),
+                spring(dampingRatio = 0.72f, stiffness = 520f),
+                label = "tab",
+            )
+            if (index >= 0) {
+                Box(
                     Modifier
-                        .weight(1f)
+                        .offset(x = x)
+                        .width(itemWidth)
                         .fillMaxHeight()
-                        .plainClickable { onSelect(tab) },
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                ) {
-                    Icon(tab.icon, contentDescription = tab.title, tint = tint, modifier = Modifier.size(26.dp))
-                    Text(tab.title, style = IosType.caption2, color = tint, maxLines = 1)
+                        .clip(RoundedCornerShape(50))
+                        .background(if (c.isDark) Color.White.copy(alpha = 0.13f) else Color.Black.copy(alpha = 0.07f))
+                )
+            }
+            Row(Modifier.fillMaxSize()) {
+                tabs.forEach { tab ->
+                    val active = tab == selected
+                    val tint = if (active) c.accent else c.label
+                    Column(
+                        Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .plainClickable { onSelect(tab) },
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        Icon(tab.icon, contentDescription = tab.title, tint = tint, modifier = Modifier.size(24.dp))
+                        Text(
+                            tab.title,
+                            style = IosType.caption2.copy(fontSize = 10.sp, fontWeight = if (active) FontWeight.SemiBold else FontWeight.Medium),
+                            color = tint,
+                            maxLines = 1,
+                        )
+                    }
                 }
             }
         }
+        Spacer(Modifier.width(10.dp))
+        val searchActive = selected == MainTab.SEARCH
+        GlassIconButton(
+            Icons.Rounded.Search,
+            "Cerca",
+            { onSelect(MainTab.SEARCH) },
+            size = 62.dp,
+            iconSize = 26.dp,
+            tint = if (searchActive) c.accent else c.label,
+        )
     }
 }
 
-/** Barra di navigazione delle schermate interne, con pulsante "indietro" in stile iOS. */
+/**
+ * Barra di navigazione delle schermate interne in stile iOS 26: pulsante indietro di vetro,
+ * azioni raccolte in una capsula di vetro, titolo che compare scorrendo.
+ * [background], [showDivider] e [backLabel] sono mantenuti per compatibilità.
+ */
 @Composable
 fun IosNavBar(
     title: String,
@@ -142,34 +199,44 @@ fun IosNavBar(
     backLabel: String? = null,
     onBack: (() -> Unit)? = null,
     titleVisible: Boolean = true,
-    background: Color = Ios.colors.bar,
+    background: Color = Ios.colors.background,
     showDivider: Boolean = true,
     contentColor: Color = Ios.colors.label,
     accent: Color = Ios.colors.accent,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
-    Column(modifier.fillMaxWidth().background(background)) {
+    @Suppress("UNUSED_VARIABLE") val unused = backLabel to showDivider
+    val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    Box(modifier.fillMaxWidth()) {
+        // Sfumatura "scroll edge" sotto i controlli, per la leggibilità.
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(statusTop + 76.dp)
+                .background(
+                    Brush.verticalGradient(
+                        0f to background.copy(alpha = 0.92f),
+                        0.6f to background.copy(alpha = 0.55f),
+                        1f to Color.Transparent,
+                    )
+                )
+        )
         Box(
             Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .height(44.dp)
+                .height(56.dp)
+                .padding(horizontal = 12.dp)
         ) {
             if (onBack != null) {
-                Row(
-                    Modifier
-                        .align(Alignment.CenterStart)
-                        .fillMaxHeight()
-                        .iosClickable(onClick = onBack)
-                        .padding(start = 4.dp, end = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(Icons.Rounded.ChevronLeft, contentDescription = "Indietro", tint = accent, modifier = Modifier.size(34.dp))
-                    if (backLabel != null) {
-                        Text(backLabel, style = IosType.body, color = accent, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.offset(x = (-4).dp))
-                    }
-                }
+                GlassIconButton(
+                    Icons.Rounded.ChevronLeft,
+                    "Indietro",
+                    onBack,
+                    modifier = Modifier.align(Alignment.CenterStart),
+                    iconSize = 30.dp,
+                    tint = accent,
+                )
             }
             if (titleVisible) {
                 Text(
@@ -184,16 +251,8 @@ fun IosNavBar(
                         .padding(horizontal = 96.dp),
                 )
             }
-            Row(
-                Modifier
-                    .align(Alignment.CenterEnd)
-                    .fillMaxHeight()
-                    .padding(end = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                content = actions,
-            )
+            GlassActions(Modifier.align(Alignment.CenterEnd), content = actions)
         }
-        if (showDivider) Hairline()
     }
 }
 
@@ -214,7 +273,7 @@ fun BarTextButton(
         maxLines = 1,
         modifier = modifier
             .iosClickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 8.dp, vertical = 10.dp),
+            .padding(horizontal = 14.dp, vertical = 10.dp),
     )
 }
 
@@ -238,7 +297,7 @@ fun BarIconButton(
     }
 }
 
-/** Capsula semitrasparente usata sopra le foto (es. "Seleziona" nella Libreria). */
+/** Capsula di vetro con testo, usata sopra le foto (es. "Seleziona" nella Libreria). */
 @Composable
 fun PillButton(
     text: String,
@@ -246,19 +305,7 @@ fun PillButton(
     modifier: Modifier = Modifier,
     highlighted: Boolean = false,
 ) {
-    val c = Ios.colors
-    val bg = if (highlighted) c.accent else if (c.isDark) Color(0xCC2C2C2E) else Color(0xB8E5E5EA)
-    val fg = if (highlighted) Color.White else c.label
-    Box(
-        modifier
-            .clip(CircleShape)
-            .background(bg)
-            .iosClickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 7.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(text, style = IosType.subhead.copy(fontWeight = FontWeight.SemiBold), color = fg, maxLines = 1)
-    }
+    GlassTextButton(text, onClick, modifier, prominent = highlighted, height = 38.dp)
 }
 
 @Composable
@@ -268,21 +315,10 @@ fun PillIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val c = Ios.colors
-    val bg = if (c.isDark) Color(0xCC2C2C2E) else Color(0xB8E5E5EA)
-    Box(
-        modifier
-            .size(34.dp)
-            .clip(CircleShape)
-            .background(bg)
-            .iosClickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(icon, contentDescription, tint = c.label, modifier = Modifier.size(20.dp))
-    }
+    GlassIconButton(icon, contentDescription, onClick, modifier, size = 38.dp, iconSize = 20.dp)
 }
 
-/** Controllo segmentato a capsula (Anni / Mesi / Giorni / Tutte le foto). */
+/** Controllo segmentato a capsula di vetro (Anni / Mesi / Giorni / Tutte le foto). */
 @Composable
 fun SegmentedControl(
     options: List<String>,
@@ -291,26 +327,21 @@ fun SegmentedControl(
     modifier: Modifier = Modifier,
 ) {
     val c = Ios.colors
-    val bg = if (c.isDark) Color(0xEB252527) else Color(0xEBEEEEF0)
-    val indicator = if (c.isDark) Color(0xFF5B5B5F) else Color.White
     BoxWithConstraints(
         modifier
-            .height(36.dp)
-            .shadow(8.dp, CircleShape, clip = false, ambientColor = Color(0x33000000), spotColor = Color(0x33000000))
-            .clip(CircleShape)
-            .background(bg)
-            .padding(3.dp)
+            .height(42.dp)
+            .glass(RoundedCornerShape(50))
+            .padding(4.dp)
     ) {
         val segment = maxWidth / options.size
-        val x by animateDpAsState(segment * selected, spring(dampingRatio = 0.8f, stiffness = 600f), label = "segment")
+        val x by animateDpAsState(segment * selected, spring(dampingRatio = 0.75f, stiffness = 560f), label = "segment")
         Box(
             Modifier
                 .offset(x = x)
                 .width(segment)
                 .fillMaxHeight()
-                .shadow(1.dp, CircleShape)
-                .clip(CircleShape)
-                .background(indicator)
+                .clip(RoundedCornerShape(50))
+                .background(if (c.isDark) Color.White.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.85f))
         )
         Row(Modifier.fillMaxSize()) {
             options.forEachIndexed { i, label ->
@@ -357,7 +388,7 @@ fun SectionHeader(
     Row(
         modifier
             .fillMaxWidth()
-            .padding(start = 16.dp, end = 8.dp, top = 20.dp, bottom = 8.dp),
+            .padding(start = 16.dp, end = 4.dp, top = 20.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(title, style = IosType.title2, color = c.label, modifier = Modifier.weight(1f))
@@ -388,7 +419,7 @@ fun GroupedSection(
         Column(
             Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(22.dp))
                 .background(c.card),
             content = content,
         )
@@ -420,7 +451,7 @@ fun ListRow(
     Row(
         modifier
             .fillMaxWidth()
-            .heightIn(min = 48.dp)
+            .heightIn(min = 50.dp)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(start = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -429,11 +460,11 @@ fun ListRow(
             Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(24.dp))
             Spacer(Modifier.width(14.dp))
         }
-        Box(Modifier.weight(1f).heightIn(min = 48.dp)) {
+        Box(Modifier.weight(1f).heightIn(min = 50.dp)) {
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 48.dp)
+                    .heightIn(min = 50.dp)
                     .padding(end = 12.dp, top = 4.dp, bottom = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -473,26 +504,27 @@ fun IosSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     )
 }
 
-/** Barra degli strumenti in basso (selezione, visualizzatore...). */
+/** Barra degli strumenti in basso: capsula di vetro fluttuante (selezione, visualizzatore...). */
 @Composable
 fun BottomToolbar(
     modifier: Modifier = Modifier,
-    background: Color = Ios.colors.bar,
-    showDivider: Boolean = true,
+    background: Color = Color.Transparent,
+    showDivider: Boolean = false,
     content: @Composable RowScope.() -> Unit,
 ) {
-    Column(
+    @Suppress("UNUSED_VARIABLE") val unused = background to showDivider
+    Box(
         modifier
             .fillMaxWidth()
-            .background(background)
-            .plainClickable { }
+            .navigationBarsPadding()
+            .padding(start = 14.dp, end = 14.dp, top = 6.dp, bottom = 8.dp)
     ) {
-        if (showDivider) Hairline()
         Row(
             Modifier
                 .fillMaxWidth()
-                .navigationBarsPadding()
-                .height(50.dp)
+                .height(56.dp)
+                .glass(RoundedCornerShape(50))
+                .plainClickable { }
                 .padding(horizontal = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -516,3 +548,6 @@ fun EmptyState(icon: ImageVector, title: String, message: String, modifier: Modi
         Text(message, style = IosType.subhead, color = c.secondaryLabel, textAlign = TextAlign.Center)
     }
 }
+
+@Suppress("unused")
+private val CircleShapeRef = CircleShape

@@ -335,7 +335,7 @@ class MediaRepository(private val context: Context) {
             },
             latitude = if (hasLocation) lat else null,
             longitude = if (hasLocation) lng else null,
-            place = if (hasLocation) geocode(lat!!, lng!!) else null,
+            place = if (hasLocation) geocode(lat, lng) else null,
         )
     }
 

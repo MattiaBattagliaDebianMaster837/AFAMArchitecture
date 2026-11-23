@@ -69,6 +69,7 @@ fun InfoSheet(
     vm: GalleryViewModel,
     favorite: Boolean,
     onDismiss: () -> Unit,
+    onShowOnMap: (() -> Unit)? = null,
 ) {
     val c = Ios.colors
     val context = LocalContext.current
@@ -222,6 +223,24 @@ fun InfoSheet(
                         )
                     }
                     Text("Mappe", style = IosType.subhead, color = c.accent)
+                }
+                if (onShowOnMap != null) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Mostra sulla mappa di Galleria",
+                        style = IosType.headline,
+                        color = c.accent,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(c.card)
+                            .iosClickable {
+                                onDismiss()
+                                onShowOnMap()
+                            }
+                            .padding(vertical = 14.dp),
+                    )
                 }
             }
 

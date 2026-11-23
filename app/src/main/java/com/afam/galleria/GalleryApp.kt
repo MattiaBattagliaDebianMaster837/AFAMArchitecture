@@ -52,6 +52,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -66,6 +67,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -86,7 +88,13 @@ import com.afam.galleria.ui.albums.DuplicatesScreen
 import com.afam.galleria.ui.albums.TrashScreen
 import com.afam.galleria.ui.components.BarTextButton
 import com.afam.galleria.ui.components.IosNavBar
-import com.afam.galleria.ui.components.IosTabBar
+import com.afam.galleria.ui.components.GlassTabBar
+import com.afam.galleria.ui.components.TabBarHeight
+import com.afam.galleria.ui.glass.GlassBox
+import com.afam.galleria.ui.glass.LocalGlassEffects
+import com.afam.galleria.ui.glass.glass
+import com.afam.galleria.ui.map.MapScreen
+import com.afam.galleria.ui.map.PhotoMapController
 import com.afam.galleria.ui.components.LocalOverlay
 import com.afam.galleria.ui.components.MainTab
 import com.afam.galleria.ui.components.MediaGrid
@@ -107,6 +115,8 @@ import com.afam.galleria.ui.nav.Route
 import com.afam.galleria.ui.nav.ThumbRegistry
 import com.afam.galleria.ui.search.SearchScreen
 import com.afam.galleria.ui.settings.SettingsScreen
+import com.afam.galleria.ui.glass.GlassScreen
+import com.afam.galleria.ui.glass.GlassTextButton
 import com.afam.galleria.ui.theme.Ios
 import com.afam.galleria.ui.theme.IosType
 import com.afam.galleria.ui.viewer.ViewerScreen
@@ -218,39 +228,53 @@ fun GalleryRoot(
         vm.messages.collect { overlay.toast(it) }
     }
 
+    val glassOn by remember(vm) { vm.store.data }.collectAsStateWithLifecycle()
+    val glassEffects = glassOn.glassEffects && !lowRam(context)
+
     CompositionLocalProvider(
         LocalNavigator provides nav,
         LocalOverlay provides overlay,
         LocalThumbRegistry provides registry,
+        LocalGlassEffects provides glassEffects,
     ) {
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(Ios.colors.background)
-        ) {
-            when (request) {
-                is LaunchRequest.View -> ExternalViewer(vm, request, hasPermission, onFinish)
-                is LaunchRequest.Pick -> if (hasPermission) {
-                    PickerScreen(vm, request, onPicked, onCancel = onFinish)
-                } else {
-                    PermissionScreen(requestCount > 0) { permissionLauncher.launch(mediaPermissions()) }
+        // Il vetro dei menu e dei fogli "legge" tutta l'app che sta dietro.
+        GlassBox(
+            modifier = Modifier.fillMaxSize(),
+            content = {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .background(Ios.colors.background)
+                ) {
+                    when (request) {
+                        is LaunchRequest.View -> ExternalViewer(vm, request, hasPermission, onFinish)
+                        is LaunchRequest.Pick -> if (hasPermission) {
+                            PickerScreen(vm, request, onPicked, onCancel = onFinish)
+                        } else {
+                            PermissionScreen(requestCount > 0) { permissionLauncher.launch(mediaPermissions()) }
+                        }
+                        LaunchRequest.Main -> if (hasPermission) {
+                            MainApp(vm, partial) { permissionLauncher.launch(mediaPermissions()) }
+                        } else {
+                            PermissionScreen(requestCount > 0) { permissionLauncher.launch(mediaPermissions()) }
+                        }
+                    }
                 }
-                LaunchRequest.Main -> if (hasPermission) {
-                    MainApp(vm, partial) { permissionLauncher.launch(mediaPermissions()) }
-                } else {
-                    PermissionScreen(requestCount > 0) { permissionLauncher.launch(mediaPermissions()) }
-                }
-            }
-            OverlayHost(overlay, vm)
-        }
+            },
+            overlay = { OverlayHost(overlay, vm) },
+        )
     }
 }
+
+private fun lowRam(context: Context): Boolean =
+    context.getSystemService(android.app.ActivityManager::class.java)?.isLowRamDevice == true
 
 // ---- App principale con schede e livelli -----------------------------------------------------
 
 @Composable
 private fun MainApp(vm: GalleryViewModel, partial: Boolean, onManageAccess: () -> Unit) {
     val nav = LocalNavigator.current
+    val context = LocalContext.current
     val library by vm.library.collectAsStateWithLifecycle()
     var tab by rememberSaveable { mutableStateOf(MainTab.LIBRARY) }
     val librarySelection = remember { SelectionState() }
@@ -258,60 +282,89 @@ private fun MainApp(vm: GalleryViewModel, partial: Boolean, onManageAccess: () -
     val c = Ios.colors
     var bannerDismissed by rememberSaveable { mutableStateOf(false) }
 
+    // La mappa viene creata la prima volta che si apre la scheda e poi tenuta pronta.
+    var mapController by remember { mutableStateOf<PhotoMapController?>(null) }
+    val accent = c.accent.toArgb()
+    if (tab == MainTab.MAP && mapController == null) {
+        mapController = PhotoMapController(context, accent)
+    }
+    DisposableEffect(Unit) {
+        onDispose { mapController?.destroy() }
+    }
+
+    // "Mostra sulla mappa" dal pannello Info.
+    LaunchedEffect(Unit) {
+        var last = vm.openMapRequest.value
+        vm.openMapRequest.collect { value ->
+            if (value != last) {
+                last = value
+                librarySelection.exit()
+                nav.entries.clear()
+                tab = MainTab.MAP
+            }
+        }
+    }
+
     BackHandler(enabled = nav.hasEntries) { nav.pop() }
 
     val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val bottomBarHeight = navBottom + 52.dp
+    val bottomBarHeight = navBottom + TabBarHeight
 
     Box(Modifier.fillMaxSize()) {
-        holder.SaveableStateProvider(tab.name) {
-            when (tab) {
-                MainTab.LIBRARY -> LibraryScreen(vm, librarySelection, bottomBarHeight, isActive = !nav.hasEntries)
-                MainTab.FOR_YOU -> ForYouScreen(vm, bottomBarHeight)
-                MainTab.ALBUMS -> AlbumsScreen(vm, bottomBarHeight)
-                MainTab.SEARCH -> SearchScreen(vm, bottomBarHeight)
-            }
-        }
-
-        if (tab == MainTab.LIBRARY && librarySelection.active) {
-            SelectionToolbar(
-                selection = librarySelection,
-                source = library.all,
-                vm = vm,
-                favorites = library.favorites,
-                modifier = Modifier.align(Alignment.BottomCenter),
-            )
-        } else {
-            IosTabBar(
-                selected = tab,
-                onSelect = {
-                    librarySelection.exit()
-                    tab = it
-                },
-                modifier = Modifier.align(Alignment.BottomCenter),
-            )
-        }
-
-        if (partial && !bannerDismissed) {
-            Row(
-                Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = bottomBarHeight + 64.dp, start = 16.dp, end = 16.dp)
-                    .widthIn(max = 480.dp)
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(c.card)
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text("Accesso limitato", style = IosType.subhead.copy(fontWeight = FontWeight.SemiBold), color = c.label)
-                    Text("Galleria vede solo le foto che hai selezionato.", style = IosType.footnote, color = c.secondaryLabel)
+        GlassBox(
+            modifier = Modifier.fillMaxSize(),
+            content = {
+                holder.SaveableStateProvider(tab.name) {
+                    when (tab) {
+                        MainTab.LIBRARY -> LibraryScreen(vm, librarySelection, bottomBarHeight, isActive = !nav.hasEntries)
+                        MainTab.FOR_YOU -> ForYouScreen(vm, bottomBarHeight)
+                        MainTab.ALBUMS -> AlbumsScreen(vm, bottomBarHeight)
+                        MainTab.MAP -> mapController?.let { MapScreen(vm, it, bottomBarHeight) }
+                        MainTab.SEARCH -> SearchScreen(vm, bottomBarHeight)
+                    }
                 }
-                BarTextButton("Gestisci", onManageAccess)
-                BarTextButton("OK", { bannerDismissed = true }, color = c.secondaryLabel)
-            }
-        }
+            },
+            overlay = {
+                if (tab == MainTab.LIBRARY && librarySelection.active) {
+                    SelectionToolbar(
+                        selection = librarySelection,
+                        source = library.all,
+                        vm = vm,
+                        favorites = library.favorites,
+                        modifier = Modifier.align(Alignment.BottomCenter),
+                    )
+                } else {
+                    GlassTabBar(
+                        selected = tab,
+                        onSelect = {
+                            librarySelection.exit()
+                            tab = it
+                        },
+                        modifier = Modifier.align(Alignment.BottomCenter),
+                    )
+                }
+
+                if (partial && !bannerDismissed) {
+                    Row(
+                        Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = bottomBarHeight + 64.dp, start = 16.dp, end = 16.dp)
+                            .widthIn(max = 480.dp)
+                            .fillMaxWidth()
+                            .glass(RoundedCornerShape(24.dp))
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Accesso limitato", style = IosType.subhead.copy(fontWeight = FontWeight.SemiBold), color = c.label)
+                            Text("Galleria vede solo le foto che hai selezionato.", style = IosType.footnote, color = c.secondaryLabel)
+                        }
+                        BarTextButton("Gestisci", onManageAccess)
+                        BarTextButton("OK", { bannerDismissed = true }, color = c.secondaryLabel)
+                    }
+                }
+            },
+        )
 
         nav.entries.forEach { entry ->
             key(entry.id) { RouteLayer(entry, vm, nav) }
@@ -422,11 +475,9 @@ private fun PickerScreen(
 
     BackHandler { onCancel() }
 
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(c.background)
-    ) {
+    GlassScreen(
+        background = c.background,
+        content = {
         MediaGrid(
             items = items,
             state = gridState,
@@ -442,6 +493,8 @@ private fun PickerScreen(
             fastScrollTop = statusTop + 45.dp,
             modifier = Modifier.fillMaxSize(),
         )
+        },
+        overlay = {
         IosNavBar(
             title = if (request.multiple && selection.count > 0) "${selection.count} selezionati" else "Scegli",
         ) {
@@ -454,14 +507,15 @@ private fun PickerScreen(
                 )
             }
         }
-        BarTextButton(
+        GlassTextButton(
             "Annulla",
             onCancel,
             modifier = Modifier
                 .statusBarsPadding()
-                .padding(start = 8.dp, top = 2.dp),
+                .padding(start = 12.dp, top = 8.dp),
         )
-    }
+        },
+    )
 }
 
 // ---- Benvenuto / permessi ----------------------------------------------------------------------

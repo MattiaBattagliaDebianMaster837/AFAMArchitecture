@@ -61,7 +61,7 @@ import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
@@ -162,6 +162,19 @@ fun MediaGrid(
         else -> Thumbs.SMALL
     }
 
+    // Posizione della griglia nella finestra: le miniature si calcolano da qui solo se servono.
+    val origin = remember { floatArrayOf(0f, 0f) }
+    DisposableEffect(registry, state) {
+        val unregister = registry.addProvider { id ->
+            val info = state.layoutInfo
+            val item = info.visibleItemsInfo.firstOrNull { it.key == id } ?: return@addProvider null
+            val left = origin[0] + item.offset.x
+            val top = origin[1] + item.offset.y - info.viewportStartOffset
+            Rect(left, top, left + item.size.width, top + item.size.height)
+        }
+        onDispose { unregister() }
+    }
+
     // Mantiene visibile l'elemento aperto nel visualizzatore (per l'animazione di chiusura).
     LaunchedEffect(nav.viewerItemId, items) {
         val id = nav.viewerItemId ?: return@LaunchedEffect
@@ -225,6 +238,11 @@ fun MediaGrid(
             verticalArrangement = Arrangement.spacedBy(spacing),
             modifier = Modifier
                 .fillMaxSize()
+                .onGloballyPositioned { coords ->
+                    val pos = coords.positionInWindow()
+                    origin[0] = pos.x
+                    origin[1] = pos.y
+                }
                 // Pizzico con due dita: cambia il numero di colonne.
                 .pointerInput(Unit) {
                     awaitEachGesture {
@@ -342,8 +360,6 @@ fun MediaGrid(
                     selecting = selection.active,
                     selected = selection.active && item.id in selection.selected,
                     badge = badge?.invoke(item),
-                    onPositioned = { rect -> registry.put(item.id, rect) },
-                    onDisposed = { rect -> registry.remove(item.id, rect) },
                 )
             }
             if (footer != null) {
@@ -378,22 +394,8 @@ private fun GridCell(
     selecting: Boolean,
     selected: Boolean,
     badge: String?,
-    onPositioned: (Rect) -> Unit,
-    onDisposed: (Rect?) -> Unit,
 ) {
-    var lastRect by remember { mutableStateOf<Rect?>(null) }
-    DisposableEffect(item.id) {
-        onDispose { onDisposed(lastRect) }
-    }
-    Box(
-        Modifier
-            .aspectRatio(1f)
-            .onGloballyPositioned { coords ->
-                val rect = coords.boundsInWindow()
-                lastRect = rect
-                onPositioned(rect)
-            }
-    ) {
+    Box(Modifier.aspectRatio(1f)) {
         MediaThumbnail(item, Modifier.fillMaxSize(), size = thumbSize)
         val shadowText = IosType.caption2.copy(
             color = Color.White,

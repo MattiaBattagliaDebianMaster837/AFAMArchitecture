@@ -8,14 +8,19 @@ plugins {
 
 android {
     namespace = "com.afam.galleria"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.afam.galleria"
         minSdk = 30
-        targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        targetSdk = 36
+        versionCode = 2
+        versionName = "2.0"
+
+        ndk {
+            // I telefoni Android moderni sono ARM: si evitano le librerie native x86.
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+        }
     }
 
     signingConfigs {
@@ -54,6 +59,22 @@ android {
         buildConfig = true
     }
 
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+            all {
+                it.systemProperty("roborazzi.test.record", "true")
+                it.systemProperty("robolectric.graphicsMode", "NATIVE")
+                it.maxHeapSize = "3g"
+                it.testLogging {
+                    events("failed", "passed")
+                    exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+                    showStackTraces = true
+                }
+            }
+        }
+    }
+
     lint {
         checkReleaseBuilds = false
         abortOnError = false
@@ -81,7 +102,7 @@ kotlin {
 }
 
 dependencies {
-    val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
+    val composeBom = platform("androidx.compose:compose-bom:2026.06.01")
     implementation(composeBom)
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
@@ -90,11 +111,24 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
 
-    implementation("androidx.core:core-ktx:1.15.0")
-    implementation("androidx.activity:activity-compose:1.9.3")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
-    implementation("androidx.exifinterface:exifinterface:1.3.7")
-    implementation("androidx.media3:media3-exoplayer:1.5.1")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
+    implementation("androidx.core:core-ktx:1.17.0")
+    implementation("androidx.activity:activity-compose:1.13.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0")
+    implementation("androidx.exifinterface:exifinterface:1.4.2")
+    implementation("androidx.media3:media3-exoplayer:1.11.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
+    implementation("androidx.profileinstaller:profileinstaller:1.4.1")
+
+    // Mappa (rendering vettoriale su GPU) ed effetto Liquid Glass.
+    implementation("org.maplibre.gl:android-sdk:13.7.1")
+    implementation("io.github.kyant0:backdrop:1.0.6")
+
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.18.1")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi:1.79.0")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi-compose:1.79.0")
+    testImplementation(composeBom)
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

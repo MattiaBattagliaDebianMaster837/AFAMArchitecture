@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -30,6 +31,7 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Face
 import androidx.compose.material.icons.outlined.FileCopy
 import androidx.compose.material.icons.outlined.Gif
+import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Panorama
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.Screenshot
@@ -72,9 +74,12 @@ import com.afam.galleria.ui.components.SystemGray
 import com.afam.galleria.ui.nav.LocalNavigator
 import com.afam.galleria.ui.nav.Navigator
 import com.afam.galleria.ui.nav.Route
+import com.afam.galleria.ui.glass.GlassScreen
 import com.afam.galleria.ui.theme.Ios
 import com.afam.galleria.ui.theme.IosType
 import com.afam.galleria.util.Auth
+import com.afam.galleria.ui.glass.GlassBox
+import com.afam.galleria.ui.glass.GlassIconButton
 
 fun typeIcon(key: String): ImageVector = when (key.substringAfter(':')) {
     "video" -> Icons.Outlined.Videocam
@@ -132,34 +137,19 @@ fun AlbumsScreen(vm: GalleryViewModel, bottomBarHeight: Dp) {
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val tileWidth = ((screenWidth - 32.dp - 12.dp) / 2.15f)
 
+    val locations by vm.locations.collectAsStateWithLifecycle()
+    val geotagged = locations.points.count { (id, _) -> library.byId[id]?.let { !library.isHidden(it) } == true }
+
+    GlassBox(
+        modifier = Modifier.fillMaxSize(),
+        content = {
     LazyColumn(
         Modifier
             .fillMaxSize()
             .background(c.background),
-        contentPadding = PaddingValues(top = statusTop, bottom = bottomBarHeight + 24.dp),
+        contentPadding = PaddingValues(top = statusTop + 56.dp, bottom = bottomBarHeight + 24.dp),
     ) {
-        item {
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .height(44.dp)
-                    .padding(horizontal = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                BarIconButton(Icons.Rounded.Add, "Nuovo album", {
-                    overlay.prompt(
-                        title = "Nuovo album",
-                        message = "Inserisci un nome per questo album.",
-                    ) { name ->
-                        val id = vm.createAlbum(name)
-                        nav.push(Route.AddToAlbum(id))
-                    }
-                })
-                Spacer(Modifier.weight(1f))
-                BarIconButton(Icons.Rounded.Settings, "Impostazioni", { nav.push(Route.Settings) }, size = 24.dp)
-            }
-            LargeTitle("Album")
-        }
+        item { LargeTitle("Album") }
         item {
             SectionHeader("I miei album", action = "Vedi tutti", onAction = { nav.push(Route.AllAlbums) })
         }
@@ -202,6 +192,18 @@ fun AlbumsScreen(vm: GalleryViewModel, bottomBarHeight: Dp) {
                 }
             }
         }
+        item { SectionHeader("Luoghi") }
+        item {
+            GroupedSection {
+                ListRow(
+                    title = "Mappa",
+                    icon = Icons.Outlined.Map,
+                    value = if (geotagged > 0) geotagged.toString() else null,
+                    showDivider = false,
+                    onClick = { vm.openMap() },
+                )
+            }
+        }
         item { SectionHeader("Altro") }
         item {
             val lock = library.local.lockPrivate
@@ -239,6 +241,30 @@ fun AlbumsScreen(vm: GalleryViewModel, bottomBarHeight: Dp) {
             }
         }
     }
+        },
+        overlay = {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .height(56.dp)
+                    .padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                GlassIconButton(Icons.Rounded.Add, "Nuovo album", {
+                    overlay.prompt(
+                        title = "Nuovo album",
+                        message = "Inserisci un nome per questo album.",
+                    ) { name ->
+                        val id = vm.createAlbum(name)
+                        nav.push(Route.AddToAlbum(id))
+                    }
+                }, tint = c.accent)
+                Spacer(Modifier.weight(1f))
+                GlassIconButton(Icons.Rounded.Settings, "Impostazioni", { nav.push(Route.Settings) })
+            }
+        },
+    )
 }
 
 @Composable
@@ -299,11 +325,9 @@ fun AllAlbumsScreen(vm: GalleryViewModel) {
     val tileWidth = (screenWidth - 32.dp - 16.dp) / 2
     val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val albums = library.myAlbums
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(c.background)
-    ) {
+    GlassScreen(
+        background = c.background,
+        content = {
         androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
             columns = GridCells.Fixed(2),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = statusTop + 52.dp, bottom = 40.dp),
@@ -322,6 +346,8 @@ fun AllAlbumsScreen(vm: GalleryViewModel) {
                 )
             }
         }
+        },
+        overlay = {
         com.afam.galleria.ui.components.IosNavBar(
             title = "I miei album",
             backLabel = "Album",
@@ -334,5 +360,6 @@ fun AllAlbumsScreen(vm: GalleryViewModel) {
                 }
             })
         }
-    }
+        },
+    )
 }

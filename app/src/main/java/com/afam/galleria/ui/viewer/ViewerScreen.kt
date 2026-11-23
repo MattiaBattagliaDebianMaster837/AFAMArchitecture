@@ -38,6 +38,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.IosShare
@@ -80,7 +81,6 @@ import com.afam.galleria.ui.albums.daysLeft
 import com.afam.galleria.ui.components.BarIconButton
 import com.afam.galleria.ui.components.BarTextButton
 import com.afam.galleria.ui.components.BottomToolbar
-import com.afam.galleria.ui.components.IosNavBar
 import com.afam.galleria.ui.components.LocalOverlay
 import com.afam.galleria.ui.components.MediaThumbnail
 import com.afam.galleria.ui.components.SheetAction
@@ -90,6 +90,10 @@ import com.afam.galleria.ui.components.rememberDeleteAction
 import com.afam.galleria.ui.nav.LocalNavigator
 import com.afam.galleria.ui.nav.LocalThumbRegistry
 import com.afam.galleria.ui.nav.Route
+import com.afam.galleria.ui.glass.GlassActions
+import com.afam.galleria.ui.glass.GlassBox
+import com.afam.galleria.ui.glass.GlassIconButton
+import com.afam.galleria.ui.glass.glass
 import com.afam.galleria.ui.theme.Ios
 import com.afam.galleria.ui.theme.IosType
 import com.afam.galleria.util.Dates
@@ -283,194 +287,200 @@ private fun ViewerContent(
             closing -> t.fromAlpha * (1f - progress.value)
             else -> progress.value
         }
-        Box(
-            Modifier
-                .fillMaxSize()
-                .graphicsLayer { alpha = bgAlpha }
-                .background(bgColor)
+        GlassBox(
+            modifier = Modifier.fillMaxSize(),
+            content = {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { alpha = bgAlpha }
+                        .background(bgColor)
+                )
+
+                HorizontalPager(
+                    state = pagerState,
+                    key = { items.getOrNull(it)?.id ?: it },
+                    beyondViewportPageCount = 1,
+                    pageSpacing = 16.dp,
+                    userScrollEnabled = !zoomed && dragOffset == Offset.Zero,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .alpha(if (t == null && opened) 1f else 0f),
+                ) { page ->
+                    val item = items[page]
+                    val isCurrent = page == pagerState.currentPage
+                    val onDismissDrag: (Offset) -> Unit = { delta ->
+                        if (!closing) dragOffset += delta
+                    }
+                    val onDismissEnd: (Float) -> Unit = { velocity ->
+                        val threshold = with(density) { 110.dp.toPx() }
+                        if (dragOffset.y > threshold || velocity > 1400f || dragOffset.y < -threshold * 1.5f) {
+                            close()
+                        } else {
+                            val start = dragOffset
+                            scope.launch {
+                                animate(0f, 1f, animationSpec = spring(dampingRatio = 0.8f, stiffness = 500f)) { v, _ ->
+                                    dragOffset = start * (1f - v)
+                                }
+                                dragOffset = Offset.Zero
+                            }
+                        }
+                    }
+                    if (item.isVideo) {
+                        VideoPage(
+                            item = item,
+                            isCurrent = isCurrent,
+                            active = opened && !closing,
+                            chromeVisible = showChrome,
+                            controlsBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 52.dp,
+                            dragOffset = if (isCurrent) dragOffset else Offset.Zero,
+                            dragScale = if (isCurrent) dragScale else 1f,
+                            onTap = { chrome = !chrome },
+                            onDismissDrag = onDismissDrag,
+                            onDismissEnd = onDismissEnd,
+                        )
+                    } else {
+                        PhotoPage(
+                            item = item,
+                            isCurrent = isCurrent,
+                            dragOffset = dragOffset,
+                            dragScale = dragScale,
+                            onTap = { chrome = !chrome },
+                            onZoomChange = { zoomed = it },
+                            onDismissDrag = onDismissDrag,
+                            onDismissEnd = onDismissEnd,
+                        )
+                    }
+                }
+
+                // Immagine animata durante l'apertura e la chiusura.
+                if (t != null) {
+                    val p = progress.value
+                    val rect = if (closing) {
+                        if (t.to != null) lerp(t.from, t.to, p) else {
+                            val s = lerp(1f, 0.92f, p)
+                            val cx = t.from.center
+                            Rect(cx.x - t.from.width * s / 2, cx.y - t.from.height * s / 2, cx.x + t.from.width * s / 2, cx.y + t.from.height * s / 2)
+                        }
+                    } else {
+                        lerp(t.from, t.to ?: t.from, p)
+                    }
+                    val alpha = if (closing && t.to == null) 1f - p else 1f
+                    val bitmap = remember(t.item.cacheKey) { Thumbs.peekBest(t.item) }
+                    Box(
+                        Modifier
+                            .offset { IntOffset(rect.left.toInt(), rect.top.toInt()) }
+                            .size(with(density) { rect.width.toDp() }, with(density) { rect.height.toDp() })
+                            .graphicsLayer { this.alpha = alpha }
+                            .clip(RoundedCornerShape(0.dp))
+                    ) {
+                        if (bitmap != null) {
+                            val image = remember(bitmap) { bitmap.asImageBitmap() }
+                            Image(image, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                        } else {
+                            MediaThumbnail(t.item, Modifier.fillMaxSize(), placeholder = Color.Transparent)
+                        }
+                    }
+                }
+            },
+            overlay = {
+                // Comandi superiori: pulsante indietro e azioni in capsule di vetro.
+                AnimatedVisibility(
+                    visible = showChrome,
+                    modifier = Modifier.align(Alignment.TopCenter),
+                    enter = fadeIn(tween(180)),
+                    exit = fadeOut(tween(180)),
+                ) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(top = statusTop)
+                            .height(56.dp)
+                            .padding(horizontal = 12.dp)
+                    ) {
+                        GlassIconButton(
+                            Icons.Rounded.ChevronLeft,
+                            "Indietro",
+                            { close() },
+                            modifier = Modifier.align(Alignment.CenterStart),
+                            iconSize = 30.dp,
+                        )
+                        Column(
+                            Modifier
+                                .align(Alignment.Center)
+                                .padding(horizontal = 104.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Text(
+                                if (isSingle) current.name else Dates.viewerTitle(current.dateTaken),
+                                style = IosType.headline,
+                                color = c.label,
+                                maxLines = 1,
+                            )
+                            if (!isSingle) {
+                                Text(Dates.time(current.dateTaken), style = IosType.caption, color = c.secondaryLabel)
+                            }
+                        }
+                        GlassActions(Modifier.align(Alignment.CenterEnd)) {
+                            if (!isTrash && current.isEditable) {
+                                BarTextButton("Modifica", { nav.push(Route.Editor(current)) }, color = c.label)
+                            }
+                            if (!isSingle && !isTrash) {
+                                BarIconButton(Icons.Rounded.MoreHoriz, "Altro", {
+                                    showMoreMenu(current, items, currentIndex, vm, overlay, nav, context, library.isHidden(current))
+                                }, tint = c.label)
+                            }
+                        }
+                    }
+                }
+
+                // Pellicola di miniature e barra degli strumenti di vetro.
+                AnimatedVisibility(
+                    visible = showChrome,
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                    enter = fadeIn(tween(180)),
+                    exit = fadeOut(tween(180)),
+                ) {
+                    Column {
+                        if (!current.isVideo && items.size > 1) {
+                            Filmstrip(
+                                items = items,
+                                current = currentIndex,
+                                onSelect = { scope.launch { pagerState.scrollToPage(it) } },
+                            )
+                        }
+                        BottomToolbar {
+                            when {
+                                isTrash -> {
+                                    BarTextButton("Elimina", {
+                                        overlay.actionSheet(
+                                            message = "Questa azione non può essere annullata.",
+                                            actions = listOf(SheetAction("Elimina definitivamente", destructive = true) {
+                                                vm.deleteForever(listOf(current))
+                                            }),
+                                        )
+                                    }, color = c.red)
+                                    Text(daysLeft(current) ?: "", style = IosType.footnote, color = c.secondaryLabel)
+                                    BarTextButton("Recupera", { vm.restore(listOf(current)) })
+                                }
+                                isSingle -> {
+                                    BarIconButton(Icons.Rounded.IosShare, "Condividi", { ShareUtil.share(context, listOf(current)) }, tint = c.label)
+                                    BarIconButton(Icons.Outlined.Info, "Info", { showInfo = true }, tint = c.label)
+                                    BarTextButton("Apri con", { ShareUtil.openWith(context, current) })
+                                }
+                                else -> {
+                                    val fav = library.isFavorite(current)
+                                    BarIconButton(Icons.Rounded.IosShare, "Condividi", { ShareUtil.share(context, listOf(current)) }, tint = c.label)
+                                    HeartButton(fav) { vm.toggleFavorite(listOf(current)) }
+                                    BarIconButton(Icons.Outlined.Info, "Info", { showInfo = true }, tint = c.label)
+                                    BarIconButton(Icons.Outlined.Delete, "Elimina", { delete(listOf(current)) {} }, tint = c.label)
+                                }
+                            }
+                        }
+                    }
+                }
+            },
         )
-
-        HorizontalPager(
-            state = pagerState,
-            key = { items.getOrNull(it)?.id ?: it },
-            beyondViewportPageCount = 1,
-            pageSpacing = 16.dp,
-            userScrollEnabled = !zoomed && dragOffset == Offset.Zero,
-            modifier = Modifier
-                .fillMaxSize()
-                .alpha(if (t == null && opened) 1f else 0f),
-        ) { page ->
-            val item = items[page]
-            val isCurrent = page == pagerState.currentPage
-            val onDismissDrag: (Offset) -> Unit = { delta ->
-                if (!closing) dragOffset += delta
-            }
-            val onDismissEnd: (Float) -> Unit = { velocity ->
-                val threshold = with(density) { 110.dp.toPx() }
-                if (dragOffset.y > threshold || velocity > 1400f || dragOffset.y < -threshold * 1.5f) {
-                    close()
-                } else {
-                    val start = dragOffset
-                    scope.launch {
-                        animate(0f, 1f, animationSpec = spring(dampingRatio = 0.8f, stiffness = 500f)) { v, _ ->
-                            dragOffset = start * (1f - v)
-                        }
-                        dragOffset = Offset.Zero
-                    }
-                }
-            }
-            if (item.isVideo) {
-                VideoPage(
-                    item = item,
-                    isCurrent = isCurrent,
-                    active = opened && !closing,
-                    chromeVisible = showChrome,
-                    controlsBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 52.dp,
-                    dragOffset = if (isCurrent) dragOffset else Offset.Zero,
-                    dragScale = if (isCurrent) dragScale else 1f,
-                    onTap = { chrome = !chrome },
-                    onDismissDrag = onDismissDrag,
-                    onDismissEnd = onDismissEnd,
-                )
-            } else {
-                PhotoPage(
-                    item = item,
-                    isCurrent = isCurrent,
-                    dragOffset = dragOffset,
-                    dragScale = dragScale,
-                    onTap = { chrome = !chrome },
-                    onZoomChange = { zoomed = it },
-                    onDismissDrag = onDismissDrag,
-                    onDismissEnd = onDismissEnd,
-                )
-            }
-        }
-
-        // Immagine animata durante l'apertura e la chiusura.
-        if (t != null) {
-            val p = progress.value
-            val rect = if (closing) {
-                if (t.to != null) lerp(t.from, t.to, p) else {
-                    val s = lerp(1f, 0.92f, p)
-                    val cx = t.from.center
-                    Rect(cx.x - t.from.width * s / 2, cx.y - t.from.height * s / 2, cx.x + t.from.width * s / 2, cx.y + t.from.height * s / 2)
-                }
-            } else {
-                lerp(t.from, t.to ?: t.from, p)
-            }
-            val alpha = if (closing && t.to == null) 1f - p else 1f
-            val bitmap = remember(t.item.cacheKey) { Thumbs.peekBest(t.item) }
-            Box(
-                Modifier
-                    .offset { IntOffset(rect.left.toInt(), rect.top.toInt()) }
-                    .size(with(density) { rect.width.toDp() }, with(density) { rect.height.toDp() })
-                    .graphicsLayer { this.alpha = alpha }
-                    .clip(RoundedCornerShape(0.dp))
-            ) {
-                if (bitmap != null) {
-                    val image = remember(bitmap) { bitmap.asImageBitmap() }
-                    Image(image, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                } else {
-                    MediaThumbnail(t.item, Modifier.fillMaxSize(), placeholder = Color.Transparent)
-                }
-            }
-        }
-
-        // Barra superiore.
-        AnimatedVisibility(
-            visible = showChrome,
-            modifier = Modifier.align(Alignment.TopCenter),
-            enter = fadeIn(tween(180)),
-            exit = fadeOut(tween(180)),
-        ) {
-            IosNavBar(
-                title = "",
-                titleVisible = false,
-                onBack = { close() },
-                backLabel = null,
-                background = c.bar,
-            ) {
-                if (!isTrash && current.isEditable) {
-                    BarTextButton("Modifica", { nav.push(Route.Editor(current)) })
-                }
-                if (!isSingle && !isTrash) {
-                    BarIconButton(Icons.Rounded.MoreHoriz, "Altro", {
-                        showMoreMenu(current, items, currentIndex, vm, overlay, nav, context, library.isHidden(current))
-                    })
-                }
-            }
-        }
-        AnimatedVisibility(
-            visible = showChrome,
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = statusTop),
-            enter = fadeIn(tween(180)),
-            exit = fadeOut(tween(180)),
-        ) {
-            Column(
-                Modifier.height(44.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
-            ) {
-                Text(
-                    if (isSingle) current.name else Dates.viewerTitle(current.dateTaken),
-                    style = IosType.headline,
-                    color = c.label,
-                    maxLines = 1,
-                    modifier = Modifier.padding(horizontal = 110.dp),
-                )
-                if (!isSingle) {
-                    Text(Dates.time(current.dateTaken), style = IosType.caption, color = c.secondaryLabel)
-                }
-            }
-        }
-
-        // Barra inferiore con la pellicola di miniature.
-        AnimatedVisibility(
-            visible = showChrome,
-            modifier = Modifier.align(Alignment.BottomCenter),
-            enter = fadeIn(tween(180)),
-            exit = fadeOut(tween(180)),
-        ) {
-            Column {
-                if (!current.isVideo && items.size > 1) {
-                    Filmstrip(
-                        items = items,
-                        current = currentIndex,
-                        onSelect = { scope.launch { pagerState.scrollToPage(it) } },
-                    )
-                }
-                BottomToolbar(background = c.bar) {
-                    when {
-                        isTrash -> {
-                            BarTextButton("Elimina", {
-                                overlay.actionSheet(
-                                    message = "Questa azione non può essere annullata.",
-                                    actions = listOf(SheetAction("Elimina definitivamente", destructive = true) {
-                                        vm.deleteForever(listOf(current))
-                                    }),
-                                )
-                            }, color = c.red)
-                            Text(daysLeft(current) ?: "", style = IosType.footnote, color = c.secondaryLabel)
-                            BarTextButton("Recupera", { vm.restore(listOf(current)) })
-                        }
-                        isSingle -> {
-                            BarIconButton(Icons.Rounded.IosShare, "Condividi", { ShareUtil.share(context, listOf(current)) })
-                            BarIconButton(Icons.Outlined.Info, "Info", { showInfo = true })
-                            BarTextButton("Apri con", { ShareUtil.openWith(context, current) })
-                        }
-                        else -> {
-                            val fav = library.isFavorite(current)
-                            BarIconButton(Icons.Rounded.IosShare, "Condividi", { ShareUtil.share(context, listOf(current)) })
-                            HeartButton(fav) { vm.toggleFavorite(listOf(current)) }
-                            BarIconButton(Icons.Outlined.Info, "Info", { showInfo = true })
-                            BarIconButton(Icons.Outlined.Delete, "Elimina", { delete(listOf(current)) {} })
-                        }
-                    }
-                }
-            }
-        }
 
         if (showInfo) {
             InfoSheet(
@@ -478,6 +488,9 @@ private fun ViewerContent(
                 vm = vm,
                 favorite = library.isFavorite(current),
                 onDismiss = { showInfo = false },
+                onShowOnMap = if (isSingle || isTrash) null else {
+                    { vm.openMap(current) }
+                },
             )
         }
     }
@@ -503,7 +516,7 @@ private fun HeartButton(favorite: Boolean, onClick: () -> Unit) {
         androidx.compose.material3.Icon(
             if (favorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
             contentDescription = if (favorite) "Rimuovi dai preferiti" else "Aggiungi ai preferiti",
-            tint = if (favorite) c.red else c.accent,
+            tint = if (favorite) c.red else c.label,
             modifier = Modifier
                 .size(26.dp)
                 .graphicsLayer {
@@ -521,7 +534,6 @@ private fun Filmstrip(items: List<MediaItem>, current: Int, onSelect: (Int) -> U
     BoxWithConstraints(
         Modifier
             .fillMaxWidth()
-            .background(c.bar)
             .padding(vertical = 6.dp)
     ) {
         val half = maxWidth / 2 - 22.dp

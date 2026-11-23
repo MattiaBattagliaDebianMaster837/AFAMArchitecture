@@ -11,7 +11,29 @@ L'APK firmato viene compilato automaticamente da GitHub Actions a ogni modifica 
 Per installarlo: apri il file sul telefono, consenti l'installazione da "origini sconosciute"
 quando richiesto, poi apri **Galleria** e consenti l'accesso a foto e video.
 
-Requisiti: Android 11 o successivo.
+Requisiti: Android 11 o successivo (effetto vetro completo da Android 12, rifrazione da Android 13).
+
+## Novità della versione 2.0
+
+**Mappa**
+- Nuova scheda *Mappa*: tutte le foto e i video con posizione sulla mappa del mondo
+- Le foto vicine si raggruppano in miniature con il numero di elementi; tocca per ingrandire
+- Mappa di calore dei luoghi in cui hai scattato più foto
+- Foglio trascinabile con le foto dell'area inquadrata e il nome del luogo
+- Dal pannello *Info* di una foto: «Mostra sulla mappa di Galleria»
+- Le posizioni vengono lette dai dati EXIF in background, salvate sul telefono e aggiornate solo
+  per le foto nuove; la mappa usa OpenStreetMap (OpenFreeMap), senza account né chiavi
+
+**Liquid Glass**
+- Stile ispirato a iOS 26: barra delle schede fluttuante, pulsanti, menu e fogli di vetro con
+  sfocatura, rifrazione ai bordi e riflessi (Android 12 o successivo)
+- Nelle Impostazioni si può disattivare l'effetto per risparmiare batteria
+
+**Prestazioni**
+- Rendering della mappa su GPU con raggruppamento nativo dei punti
+- Miniature della mappa caricate solo quando servono, con cache limitata
+- Indicizzazione delle posizioni su thread a bassa priorità
+- Griglia ottimizzata: nessun calcolo per miniatura durante lo scorrimento
 
 ## Funzioni
 
@@ -67,7 +89,7 @@ foto nel cestino senza la finestra di conferma di Android ogni volta.
 
 ## Compilare in locale
 
-Serve l'Android SDK (piattaforma 35) e JDK 17:
+Serve l'Android SDK (piattaforma 36) e JDK 17:
 
 ```
 ./gradlew assembleRelease

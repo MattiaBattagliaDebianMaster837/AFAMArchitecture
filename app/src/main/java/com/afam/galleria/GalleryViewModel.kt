@@ -8,6 +8,8 @@ import androidx.lifecycle.viewModelScope
 import com.afam.galleria.data.ForYou
 import com.afam.galleria.data.Library
 import com.afam.galleria.data.LocalStore
+import com.afam.galleria.data.LocationIndex
+import com.afam.galleria.data.LocationState
 import com.afam.galleria.data.MediaItem
 import com.afam.galleria.data.MediaRepository
 import com.afam.galleria.data.MemoryBuilder
@@ -24,6 +26,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -66,6 +70,44 @@ class GalleryViewModel(app: Application) : AndroidViewModel(app) {
     /** true mentre l'editor esporta l'immagine. */
     val saving = MutableStateFlow(false)
 
+    // ---- Mappa ----------------------------------------------------------------------------
+
+    private val locationIndex = LocationIndex(app)
+    val locations: StateFlow<LocationState> = locationIndex.state
+
+    /** Elemento da mostrare sulla mappa (dal pannello Info). */
+    val mapFocus = MutableStateFlow<Long?>(null)
+
+    /** Incrementato per chiedere all'interfaccia di aprire la scheda Mappa. */
+    val openMapRequest = MutableStateFlow(0)
+
+    private var locationJob: Job? = null
+
+    init {
+        // Indicizza le posizioni in background quando cambia l'insieme dei file.
+        viewModelScope.launch {
+            media.filter { it != null }
+                .distinctUntilChanged { a, b -> a === b }
+                .debounce(1200)
+                .collect { items -> reindexLocations(items.orEmpty()) }
+        }
+    }
+
+    private fun reindexLocations(items: List<MediaItem>) {
+        locationJob?.cancel()
+        locationJob = viewModelScope.launch { locationIndex.update(items) }
+    }
+
+    /** Da chiamare dopo aver ottenuto l'autorizzazione alla posizione delle foto. */
+    fun refreshLocations() {
+        media.value?.let { reindexLocations(it) }
+    }
+
+    fun openMap(focus: MediaItem? = null) {
+        mapFocus.value = focus?.id
+        openMapRequest.value++
+    }
+
     private var observing = false
     private var loadJob: Job? = null
 
@@ -82,7 +124,17 @@ class GalleryViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Solo per i test: blocca la libreria su dati finti. */
+    internal var debugFrozen = false
+
+    internal fun debugSetMedia(items: List<MediaItem>) {
+        debugFrozen = true
+        loadJob?.cancel()
+        media.value = items
+    }
+
     fun refresh() {
+        if (debugFrozen) return
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
             val items = repo.loadAll()
@@ -277,4 +329,5 @@ class GalleryViewModel(app: Application) : AndroidViewModel(app) {
     fun setLockPrivate(value: Boolean) = store.update { it.copy(lockPrivate = value) }
     fun setShowHiddenAlbum(value: Boolean) = store.update { it.copy(showHiddenAlbum = value) }
     fun setGridColumns(value: Int) = store.update { it.copy(gridColumns = value) }
+    fun setGlassEffects(value: Boolean) = store.update { it.copy(glassEffects = value) }
 }
