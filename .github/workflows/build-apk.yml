@@ -29,7 +29,7 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Build release APK
+      - name: Build release APKs (Galleria + Pura)
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon --stacktrace assembleRelease
@@ -42,7 +42,9 @@ jobs:
         run: |
           mkdir -p release docs/screenshots
           cp app/build/outputs/apk/release/app-release.apk release/Galleria.apk
+          cp camera/build/outputs/apk/release/camera-release.apk release/Pura.apk
           cp app/build/outputs/roborazzi/*.png docs/screenshots/ 2>/dev/null || true
+          cp camera/build/outputs/roborazzi/*.png docs/screenshots/ 2>/dev/null || true
           ls -la release docs/screenshots
 
       - uses: actions/upload-artifact@v4
@@ -50,11 +52,16 @@ jobs:
           name: Galleria-apk
           path: release/Galleria.apk
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Pura-apk
+          path: release/Pura.apk
+
       - name: Commit APK to branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f release/Galleria.apk
+          git add -f release/Galleria.apk release/Pura.apk
           git add -f docs/screenshots 2>/dev/null || true
           git commit -m "Build APK ${GITHUB_SHA::7} [skip ci]" || exit 0
           git pull --rebase origin "${GITHUB_REF_NAME}" || true

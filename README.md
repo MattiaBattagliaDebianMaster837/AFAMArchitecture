@@ -1,3 +1,85 @@
+# Galleria e Pura
+
+Questo repository contiene due app Android:
+
+- **[Pura](#pura--fotocamera-senza-ai)**: fotocamera con comandi manuali e **nessuna elaborazione AI**,
+  pensata per il Nothing Phone (3a) ma compatibile con qualsiasi Android 12+ → [`release/Pura.apk`](release/Pura.apk)
+- **[Galleria](#galleria)**: galleria in stile iOS → [`release/Galleria.apk`](release/Galleria.apk)
+
+---
+
+# Pura — fotocamera senza AI
+
+L'app Fotocamera di Nothing applica sempre la sua elaborazione con AI (riconoscimento della scena,
+HDR multi-scatto, nitidezza e levigatura aggressive) e non si può disattivare. Pura usa direttamente
+le API Camera2 di Android: ottieni l'immagine del sensore con la sola elaborazione di base dell'ISP,
+scelta da te.
+
+## Installazione
+
+Scarica [`release/Pura.apk`](release/Pura.apk) sul telefono, aprilo e consenti l'installazione da
+"origini sconosciute". Al primo avvio consenti fotocamera e microfono (il microfono serve solo per
+l'audio dei video). Foto e video vanno in `DCIM/Camera`, come quelli della fotocamera di sistema.
+
+Pura risponde anche alle scorciatoie "apri fotocamera" di Android (anche dalla schermata di blocco):
+se il sistema chiede quale fotocamera usare, scegli Pura. Alcuni telefoni però aprono sempre la
+fotocamera di sistema con il doppio tocco del tasto di accensione: in quel caso metti l'icona di
+Pura nel dock al posto di quella di Nothing.
+
+## Cosa puoi regolare
+
+**Modi**: FOTO (automatico), PRO (manuale) e VIDEO, scorrendo a destra/sinistra sull'anteprima.
+
+**PRO** — una ghiera per ogni parametro, con "A" per tornare in automatico:
+- **ISO** e **tempo di scatto** (fino al limite del sensore, anche diversi secondi). Se ne fissi uno
+  solo, l'altro viene calcolato in automatico (priorità ISO o priorità tempi)
+- **Messa a fuoco manuale** con **focus peaking** (bordi a fuoco evidenziati in rosso)
+- **Bilanciamento del bianco**: preimpostazioni o temperatura in **Kelvin** (2000–10000 K),
+  calibrata sul sensore
+- **Compensazione dell'esposizione**
+- **Zebra** sulle alte luci bruciate, **istogramma** dal vivo
+
+**Foto**
+- Proporzioni 4:3, 16:9, 1:1
+- Risoluzione standard (12 MP) o **massima del sensore (50 MP)** se il telefono la rende disponibile
+- **RAW (DNG) + JPEG**: i dati grezzi del sensore, senza alcuna elaborazione
+- JPEG **Ultra HDR** se supportato, qualità JPEG regolabile (70–100)
+- Flash (auto, sempre, torcia), timer 3/10 s, selfie specchiati (senza ricomprimere)
+- Tocca per mettere a fuoco ed esporre, trascina in verticale per la compensazione,
+  tieni premuto per il **blocco AE/AF**
+- Zoom con i pulsanti degli obiettivi (0.6×, 1×, 2×…) o con il pizzico
+
+**Elaborazione (nessuna AI)**
+- *Naturale* (predefinito): riduzione rumore minima e nessuna nitidezza artificiale
+- *Standard*: la pipeline classica dell'ISP in alta qualità
+- *Personalizzato*: riduzione rumore, nitidezza e curva tonale (standard, sRGB pura, piatta/Log)
+- Correzione distorsione e stabilizzazione ottica attivabili/disattivabili
+
+**Video**: 4K / 1080p / 720p, 30 o 60 fps (secondo il sensore), H.265 o H.264, bitrate alto,
+stabilizzazione elettronica, audio, pausa, comandi manuali anche in video (pulsante **M**).
+
+**Altro**: griglia (terzi, sezione aurea, 4×4), livella, tasti del volume come scatto o zoom,
+suono di scatto disattivabile, posizione GPS opzionale (spenta di base), elenco delle fotocamere
+che il telefono espone alle app esterne (*Impostazioni › Fotocamere del telefono*).
+
+## Ottimizzazioni
+
+- La fotocamera si apre in parallelo con l'interfaccia; le impostazioni si leggono in modo sincrono
+- Cambiare parametri (ISO, zoom, flash…) aggiorna solo la richiesta al sensore, senza riaprire la sessione
+- Focus peaking e zebra sono calcolati dalla GPU con uno shader (Android 13+), a costo zero per la CPU
+- Istogramma ed esposizione semi-automatica leggono l'anteprima solo a bassa risoluzione e solo quando servono
+- Scatto immediato quando la messa a fuoco è già pronta; i RAW vengono copiati subito e salvati in
+  background, così si può scattare di nuovo senza attese
+- Se una combinazione (es. 50 MP o RAW) non è supportata, Pura torna da sola alle impostazioni standard
+
+## Nota sul Nothing Phone (3a)
+
+Le app di terze parti possono usare solo le fotocamere che Nothing rende disponibili tramite Camera2.
+Se un obiettivo (es. il teleobiettivo) o i 50 MP non compaiono, è una limitazione del sistema:
+in *Impostazioni › Fotocamere del telefono* trovi l'elenco esatto di ciò che il telefono espone.
+
+---
+
 # Galleria
 
 Un'app galleria per Android ispirata all'app Foto di iOS, con un'interfaccia semplice e pulita.
@@ -95,4 +177,5 @@ Serve l'Android SDK (piattaforma 36) e JDK 17:
 ./gradlew assembleRelease
 ```
 
-L'APK si trova in `app/build/outputs/apk/release/app-release.apk`.
+Gli APK si trovano in `app/build/outputs/apk/release/app-release.apk` (Galleria) e
+`camera/build/outputs/apk/release/camera-release.apk` (Pura).
