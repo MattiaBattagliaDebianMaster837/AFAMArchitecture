@@ -9,11 +9,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -185,7 +183,7 @@ private fun Dial(model: DialModel, rotation: Float) {
     val stepPx = with(density) { 11.dp.toPx() }
     val current by rememberUpdatedState(model)
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.fillMaxWidth().height(34.dp)) {
             val auto = model.autoIndex
             if (auto != null) {
                 Text(
@@ -194,22 +192,21 @@ private fun Dial(model: DialModel, rotation: Float) {
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .padding(start = 16.dp)
                         .clip(RoundedCornerShape(50))
                         .background(if (model.index == auto) Pura.Yellow else Color.White.copy(alpha = 0.18f))
                         .clickable { model.apply(auto) }
-                        .padding(horizontal = 9.dp, vertical = 3.dp),
-                )
-                Spacer(Modifier.width(12.dp))
-            }
-            Box(Modifier.width(110.dp), contentAlignment = Alignment.Center) {
-                Text(
-                    model.label(model.index),
-                    color = Pura.Yellow,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.rotate(rotation),
+                        .padding(horizontal = 11.dp, vertical = 4.dp),
                 )
             }
+            Text(
+                model.label(model.index),
+                color = Pura.Yellow,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.align(Alignment.Center).rotate(rotation),
+            )
         }
         Canvas(
             Modifier

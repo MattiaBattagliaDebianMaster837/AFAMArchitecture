@@ -81,8 +81,8 @@ fun SettingsScreen(state: UiState, actions: CameraActions, onClose: () -> Unit) 
                 Choice(
                     "Risoluzione",
                     listOf(
-                        Resolution.STANDARD to "%.0f MP (consigliata)".format(cam.standardMp),
-                        Resolution.MAXIMUM to "%.0f MP".format(cam.maxMp),
+                        Resolution.STANDARD to "${mp(cam.standardMp)} MP (consigliata)",
+                        Resolution.MAXIMUM to "${mp(cam.maxMp)} MP",
                     ),
                     s.resolution,
                     note = "A 50 MP il sensore non unisce i pixel: più dettaglio con molta luce, più rumore al buio. " +
@@ -247,6 +247,8 @@ fun SettingsScreen(state: UiState, actions: CameraActions, onClose: () -> Unit) 
     }
 }
 
+private fun mp(v: Float): String = if (v >= 20f) "${v.roundToInt()}" else "%.1f".format(v).removeSuffix(",0").removeSuffix(".0")
+
 @Composable
 private fun Section(title: String) {
     Text(
@@ -321,9 +323,9 @@ private fun SliderRow(title: String, value: Int, min: Int, max: Int, suffix: Str
         Slider(
             value = local,
             onValueChange = { local = it },
-            onValueChangeFinished = { onChange(local.roundToInt()) },
+            onValueChangeFinished = { onChange((local / 5f).roundToInt() * 5) },
             valueRange = min.toFloat()..max.toFloat(),
-            steps = max - min - 1,
+            steps = (max - min) / 5 - 1,
             colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = Pura.Accent),
         )
     }
