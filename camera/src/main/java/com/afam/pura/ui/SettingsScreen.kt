@@ -133,7 +133,7 @@ fun SettingsScreen(state: UiState, actions: CameraActions, onClose: () -> Unit) 
                     note = "Con poca luce scatta 4–8 fotogrammi identici, li allinea e ne fa la media: il rumore " +
                         "(i puntini colorati) sparisce senza inventare dettagli. Niente AI. Tieni fermo il telefono per un attimo." +
                         if (!state.status.multiFrameReady && s.multiFrame != MultiFrame.OFF && s.mode != CaptureMode.VIDEO)
-                            "\nNon disponibile con RAW, Ultra HDR o 50 MP." else "",
+                            "\nNon attivo ora: non funziona con RAW, Ultra HDR o 50 MP." else "",
                 ) { v -> actions.update { it.copy(multiFrame = v) } }
             }
             if (s.profile == ImageProfile.CUSTOM) {

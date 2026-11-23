@@ -60,6 +60,7 @@ import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
+import kotlin.math.roundToInt
 
 sealed interface CamEvent {
     /** L'otturatore è scattato (per animazione e suono). */
@@ -418,14 +419,17 @@ class CameraController(
         val raw = if (!safe && !forIntent && s.format == PhotoFormat.RAW_JPEG && !maxRes) spec.rawSize else null
         val previewAspect = if (crop != null) still.width.toFloat() / still.height else aspect
         val preview = choosePreview(spec, previewAspect, 30)
-        // Il multi-scatto serve un flusso YUV in più: solo con JPEG normale e se il telefono lo accetta.
-        val yuv = if (!safe && !multiFrameUnsupported && s.multiFrame != MultiFrame.OFF && raw == null &&
-            !maxRes && format == ImageFormat.JPEG && spec.yuvSizes.any { it == still }
-        ) still else null
+        // Con il multi-scatto attivo le foto passano dal flusso YUV (anteprima + YUV alla massima
+        // risoluzione è una combinazione garantita da Android) e il JPEG lo crea Pura.
+        val yuv = if (!safe && !multiFrameUnsupported && !forIntent && s.multiFrame != MultiFrame.OFF &&
+            raw == null && !maxRes && format == ImageFormat.JPEG && crop == null
+        ) {
+            spec.yuvSizes.filter { it.matches(aspect) }.maxByOrNull { it.area }?.takeIf { it.area >= still.area * 0.8f }
+        } else null
         return Plan(
-            cameraId = spec.id, video = false, preview = preview, still = still, stillFormat = format,
+            cameraId = spec.id, video = false, preview = preview, still = yuv ?: still, stillFormat = format,
             maxRes = maxRes, crop = crop, raw = raw, videoSize = null, fps = 30, videoParams = null,
-            fancy = maxRes || raw != null || format != ImageFormat.JPEG || yuv != null,
+            fancy = maxRes || raw != null || format != ImageFormat.JPEG,
             yuv = yuv,
         )
     }
@@ -603,11 +607,13 @@ class CameraController(
 
         if (!p.video) {
             val still = p.still!!
-            val reader = ImageReader.newInstance(still.width, still.height, p.stillFormat, 3)
-            reader.setOnImageAvailableListener({ r -> onStillImage(r) }, handler)
-            stillReader = reader
-            outputs += OutputConfiguration(reader.surface).apply {
-                if (p.maxRes) addSensorPixelModeUsed(CameraMetadata.SENSOR_PIXEL_MODE_MAXIMUM_RESOLUTION)
+            if (p.yuv == null) {
+                val reader = ImageReader.newInstance(still.width, still.height, p.stillFormat, 3)
+                reader.setOnImageAvailableListener({ r -> onStillImage(r) }, handler)
+                stillReader = reader
+                outputs += OutputConfiguration(reader.surface).apply {
+                    if (p.maxRes) addSensorPixelModeUsed(CameraMetadata.SENSOR_PIXEL_MODE_MAXIMUM_RESOLUTION)
+                }
             }
             p.raw?.let { size ->
                 val rr = ImageReader.newInstance(size.width, size.height, ImageFormat.RAW_SENSOR, 2)
@@ -679,8 +685,9 @@ class CameraController(
 
     private fun fallback(message: String) {
         if (plan?.yuv != null && !multiFrameUnsupported) {
-            // Il telefono non accetta il flusso in più: si rinuncia solo al multi-scatto.
+            // Il telefono non accetta il flusso YUV: si rinuncia solo al multi-scatto.
             multiFrameUnsupported = true
+            _events.tryEmit(CamEvent.Message("Multi-scatto non disponibile su questo telefono: uso lo scatto singolo"))
             val spec = activeSpec() ?: return
             plan = makePlan(settings, spec, safe = false)
             publishPlanStatus(plan!!)
@@ -826,6 +833,10 @@ class CameraController(
                 val range = spec.fpsRanges.firstOrNull { it.lower == p.fps && it.upper == p.fps }
                     ?: spec.fpsRanges.filter { it.upper == p.fps }.maxByOrNull { it.lower }
                 range?.let { b.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, it) }
+            } else {
+                // In foto l'automatico può allungare i tempi al buio invece di alzare solo gli ISO.
+                spec.fpsRanges.filter { it.upper == 30 }.minByOrNull { it.lower }
+                    ?.let { b.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, it) }
             }
         }
         b.set(CaptureRequest.CONTROL_AE_ANTIBANDING_MODE, CameraMetadata.CONTROL_AE_ANTIBANDING_MODE_AUTO)
@@ -1217,9 +1228,9 @@ class CameraController(
 
     private var shotFrames = 1
 
-    /** Quanti fotogrammi unire per questo scatto (1 = scatto singolo dell'ISP). */
+    /** Quanti fotogrammi unire per questo scatto (1 = scatto singolo). */
     private fun multiFrameCount(p: Plan, spec: CameraSpec, flash: Boolean): Int {
-        if (p.yuv == null || yuvReader == null || merging || flash) return 1
+        if (p.yuv == null || yuvReader == null || flash) return 1
         val mode = settings.multiFrame
         val iso = manualExposure(spec)?.first ?: lastAutoIso
         val exp = manualExposure(spec)?.second ?: lastAutoExposure
@@ -1271,8 +1282,8 @@ class CameraController(
             return
         }
         shot = Shot.CAPTURING
-        if (shotFrames > 1 && yuvReader != null) {
-            captureBurst(s, dev, p, spec, shotFrames)
+        if (yuvReader != null) {
+            captureBurst(s, dev, p, spec, shotFrames.coerceAtLeast(1))
             return
         }
         val orientation = jpegOrientation(spec)
@@ -1477,12 +1488,34 @@ class CameraController(
         var released = false
     }
 
-    /** Il sensore ha finito: il telefono si può muovere e si può scattare di nuovo. */
-    private fun releaseBurstCamera(b: Burst) {
+    /** Il sensore ha finito di catturare: il telefono si può muovere. */
+    private fun releaseHold(b: Burst) {
         if (b.released) return
         b.released = true
         _status.update { it.copy(holdStill = false) }
-        finishShot()
+    }
+
+    /**
+     * Esposizione per la raffica con poca luce. L'automatico del driver tiene il tempo corto e
+     * alza gli ISO (anche 7000): qui si mantiene la stessa luminosità con tempi più lunghi
+     * (fino a 1/15 s grazie allo stabilizzatore ottico) e ISO molto più bassi. Il mosso tra un
+     * fotogramma e l'altro lo compensa l'allineamento.
+     */
+    private fun nightExposure(spec: CameraSpec): Pair<Int, Long>? {
+        val iso0 = lastAutoIso
+        val t0 = lastAutoExposure
+        val isoRange = spec.isoRange ?: return null
+        val expRange = spec.exposureRange ?: return null
+        if (iso0 <= 0 || t0 <= 0) return null
+        val product = iso0.toDouble() * t0
+        val ois = settings.ois && spec.oisModes.size > 1
+        val tMax = min(expRange.upper, if (ois) 66_000_000L else 33_000_000L)
+        var t = min(tMax, (product / isoRange.lower).toLong()).coerceAtLeast(t0)
+        // Multipli di 1/100 s: niente sfarfallio con le luci di casa a 50 Hz.
+        if (t >= 20_000_000L) t = t / 10_000_000L * 10_000_000L
+        t = t.coerceIn(expRange.lower, expRange.upper)
+        val iso = (product / t).roundToInt().coerceIn(isoRange.lower, isoRange.upper)
+        return iso to t
     }
 
     private var burstIds = 0
@@ -1491,7 +1524,9 @@ class CameraController(
         val reader = yuvReader ?: return
         val size = p.yuv ?: return
         val manual = manualExposure(spec)
-        val iso = manual?.first ?: lastAutoIso
+        val multi = frames > 1
+        val night = if (multi && manual == null) nightExposure(spec) else null
+        val iso = night?.first ?: manual?.first ?: lastAutoIso
         val b = Burst(
             id = ++burstIds,
             expected = frames,
@@ -1507,24 +1542,28 @@ class CameraController(
         )
         burst = b
         merging = true
-        _status.update { it.copy(holdStill = true) }
+        if (multi) _status.update { it.copy(holdStill = true) }
         try {
             val requests = (0 until frames).map {
                 val rb = dev.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE)
                 rb.addTarget(reader.surface)
                 applySettings(rb, spec, p, still = true)
-                // Tutti i fotogrammi con la stessa esposizione e lo stesso bianco.
-                if (manual == null) {
-                    rb.set(CaptureRequest.CONTROL_AE_LOCK, true)
+                if (multi) {
+                    if (night != null) {
+                        rb.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_OFF)
+                        rb.set(CaptureRequest.SENSOR_SENSITIVITY, night.first)
+                        rb.set(CaptureRequest.SENSOR_EXPOSURE_TIME, night.second)
+                        rb.set(CaptureRequest.SENSOR_FRAME_DURATION, night.second)
+                        rb.set(CaptureRequest.FLASH_MODE, CameraMetadata.FLASH_MODE_OFF)
+                    } else if (manual == null) {
+                        // Tutti i fotogrammi con la stessa esposizione.
+                        rb.set(CaptureRequest.CONTROL_AE_LOCK, true)
+                    }
                     rb.set(CaptureRequest.CONTROL_AWB_LOCK, true)
+                    if (rb.get(CaptureRequest.EDGE_MODE) == CameraMetadata.EDGE_MODE_HIGH_QUALITY &&
+                        spec.has(spec.edgeModes, CameraMetadata.EDGE_MODE_FAST)
+                    ) rb.set(CaptureRequest.EDGE_MODE, CameraMetadata.EDGE_MODE_FAST)
                 }
-                // Elaborazione veloce per fotogramma: la pulizia vera la fa la media.
-                if (spec.has(spec.nrModes, CameraMetadata.NOISE_REDUCTION_MODE_FAST)) {
-                    rb.set(CaptureRequest.NOISE_REDUCTION_MODE, CameraMetadata.NOISE_REDUCTION_MODE_FAST)
-                }
-                if (rb.get(CaptureRequest.EDGE_MODE) == CameraMetadata.EDGE_MODE_HIGH_QUALITY &&
-                    spec.has(spec.edgeModes, CameraMetadata.EDGE_MODE_FAST)
-                ) rb.set(CaptureRequest.EDGE_MODE, CameraMetadata.EDGE_MODE_FAST)
                 rb.build()
             }
             var started = false
@@ -1538,12 +1577,12 @@ class CameraController(
 
                 override fun onCaptureCompleted(session: CameraCaptureSession, request: CaptureRequest, result: TotalCaptureResult) {
                     if (b.result == null) b.result = result
-                    if (++b.captured >= b.expected) releaseBurstCamera(b)
+                    if (++b.captured >= b.expected) releaseHold(b)
                 }
 
                 override fun onCaptureFailed(session: CameraCaptureSession, request: CaptureRequest, failure: CaptureFailure) {
                     b.failed++
-                    if (++b.captured >= b.expected) releaseBurstCamera(b)
+                    if (++b.captured >= b.expected) releaseHold(b)
                     mergeHandler.post { maybeFinishBurst(b) }
                 }
             }, handler)
@@ -1585,9 +1624,11 @@ class CameraController(
     private fun finishBurst(b: Burst) {
         if (b.done) return
         b.done = true
+        // Tutti i fotogrammi sono stati letti: la fotocamera è libera per lo scatto successivo.
         handler.post {
             if (burst === b) burst = null
-            releaseBurstCamera(b)
+            releaseHold(b)
+            finishShot()
         }
         val m = b.merger
         if (m == null || m.count == 0) {

@@ -36,12 +36,13 @@ class MultiFrameMerger(
     private val refY = ByteArray(w * h)
     private val refU = ByteArray(cw * ch)
     private val refV = ByteArray(cw * ch)
-    private val sumY = ShortArray(w * h)
-    private val sumU = ShortArray(cw * ch)
-    private val sumV = ShortArray(cw * ch)
-    private val frameY = ByteArray(w * h)
-    private val frameU = ByteArray(cw * ch)
-    private val frameV = ByteArray(cw * ch)
+    // Allocati solo dal secondo fotogramma: lo scatto singolo usa poca memoria.
+    private val sumY by lazy { ShortArray(w * h) }
+    private val sumU by lazy { ShortArray(cw * ch) }
+    private val sumV by lazy { ShortArray(cw * ch) }
+    private val frameY by lazy { ByteArray(w * h) }
+    private val frameU by lazy { ByteArray(cw * ch) }
+    private val frameV by lazy { ByteArray(cw * ch) }
 
     private val sw = w / SCALE
     private val sh = h / SCALE
@@ -74,6 +75,10 @@ class MultiFrameMerger(
     fun addFrame(fill: (ByteArray, ByteArray, ByteArray) -> Unit) {
         if (count == 0) {
             fill(refY, refU, refV)
+            count = 1
+            return
+        }
+        if (count == 1) {
             for (i in refY.indices) sumY[i] = (refY[i].toInt() and 0xFF).toShort()
             for (i in refU.indices) {
                 sumU[i] = (refU[i].toInt() and 0xFF).toShort()
@@ -81,8 +86,6 @@ class MultiFrameMerger(
             }
             refSmall = downscale(refY)
             patch = detailPatch()
-            count = 1
-            return
         }
         fill(frameY, frameU, frameV)
         val (dx, dy) = align()
@@ -94,9 +97,18 @@ class MultiFrameMerger(
 
     /** Immagine finale in NV21, pronta per la compressione JPEG. */
     fun toNv21(): ByteArray {
-        val n = max(1, count)
-        val half = n / 2
         val out = ByteArray(w * h + 2 * cw * ch)
+        if (count <= 1) {
+            System.arraycopy(refY, 0, out, 0, w * h)
+            var o = w * h
+            for (i in 0 until cw * ch) {
+                out[o++] = refV[i]
+                out[o++] = refU[i]
+            }
+            return out
+        }
+        val n = count
+        val half = n / 2
         for (i in 0 until w * h) out[i] = ((sumY[i] + half) / n).toByte()
         var o = w * h
         for (i in 0 until cw * ch) {
@@ -418,7 +430,7 @@ class MultiFrameMerger(
                 exif.setAttribute(ExifInterface.TAG_OFFSET_TIME_ORIGINAL, offset)
                 exif.setAttribute(ExifInterface.TAG_MAKE, Build.MANUFACTURER)
                 exif.setAttribute(ExifInterface.TAG_MODEL, Build.MODEL)
-                exif.setAttribute(ExifInterface.TAG_SOFTWARE, "Pura (multi-scatto ×$frames)")
+                exif.setAttribute(ExifInterface.TAG_SOFTWARE, if (frames > 1) "Pura (multi-scatto ×$frames)" else "Pura")
                 result?.get(CaptureResult.SENSOR_SENSITIVITY)?.let {
                     exif.setAttribute(ExifInterface.TAG_PHOTOGRAPHIC_SENSITIVITY, it.toString())
                 }
