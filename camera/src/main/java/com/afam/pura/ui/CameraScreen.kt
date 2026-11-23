@@ -264,6 +264,19 @@ fun CameraLayout(
                     modifier = Modifier.align(Alignment.Center).rotate(rot),
                 )
             }
+            if (state.status.holdStill) {
+                Text(
+                    "Tieni fermo il telefono…",
+                    color = Color.White,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .rotate(rot)
+                        .background(Pura.Panel, RoundedCornerShape(50))
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            }
             if (recording) {
                 RecordingBadge(state.status.paused, Modifier.align(Alignment.TopCenter).padding(top = 10.dp))
             }

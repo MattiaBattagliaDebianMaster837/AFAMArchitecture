@@ -34,6 +34,7 @@ import android.view.Surface
 import com.afam.pura.settings.CaptureMode
 import com.afam.pura.settings.FlashMode
 import com.afam.pura.settings.ImageProfile
+import com.afam.pura.settings.MultiFrame
 import com.afam.pura.settings.Manual
 import com.afam.pura.settings.NoiseReduction
 import com.afam.pura.settings.PhotoFormat
@@ -89,6 +90,10 @@ data class CamStatus(
     val wbCalibrating: Boolean = false,
     val focusPoint: PointF? = null,
     val aeAfLocked: Boolean = false,
+    /** Scatto multi-fotogramma in corso: il telefono va tenuto fermo. */
+    val holdStill: Boolean = false,
+    /** Il multi-scatto è disponibile con le impostazioni attuali. */
+    val multiFrameReady: Boolean = false,
 )
 
 data class LiveInfo(
@@ -145,6 +150,12 @@ class CameraController(
     private var generation = 0
     private var stillReader: ImageReader? = null
     private var rawReader: ImageReader? = null
+    private var yuvReader: ImageReader? = null
+    private var multiFrameUnsupported = false
+    private val mergeThread = HandlerThread("pura-merge-io").apply { start() }
+    private val mergeHandler = Handler(mergeThread.looper)
+    @Volatile private var merging = false
+    @Volatile private var burst: Burst? = null
     private var recorderSurface: Surface? = null
     private var recording = false
     private var recordingUri: Uri? = null
@@ -218,6 +229,8 @@ class CameraController(
         val fps: Int,
         val videoParams: VideoRecorder.Params?,
         val fancy: Boolean,
+        /** Flusso YUV per il multi-scatto (stessa dimensione del JPEG). */
+        val yuv: Size? = null,
     )
 
     init {
@@ -253,6 +266,7 @@ class CameraController(
             recorder.release()
             sound.release()
             thread.quitSafely()
+            mergeThread.quitSafely()
         }
     }
 
@@ -341,7 +355,7 @@ class CameraController(
 
     private fun planKey(s: Settings) = listOf(
         s.front, s.backCameraId, s.mode, s.aspect, s.resolution, s.format, s.videoSize, s.videoFps,
-        s.videoCodec, s.videoHighBitrate,
+        s.videoCodec, s.videoHighBitrate, s.multiFrame,
     )
 
     private fun currentSpec(): CameraSpec? = plan?.let { catalog.spec(it.cameraId) } ?: activeSpec()
@@ -404,10 +418,15 @@ class CameraController(
         val raw = if (!safe && !forIntent && s.format == PhotoFormat.RAW_JPEG && !maxRes) spec.rawSize else null
         val previewAspect = if (crop != null) still.width.toFloat() / still.height else aspect
         val preview = choosePreview(spec, previewAspect, 30)
+        // Il multi-scatto serve un flusso YUV in più: solo con JPEG normale e se il telefono lo accetta.
+        val yuv = if (!safe && !multiFrameUnsupported && s.multiFrame != MultiFrame.OFF && raw == null &&
+            !maxRes && format == ImageFormat.JPEG && spec.yuvSizes.any { it == still }
+        ) still else null
         return Plan(
             cameraId = spec.id, video = false, preview = preview, still = still, stillFormat = format,
             maxRes = maxRes, crop = crop, raw = raw, videoSize = null, fps = 30, videoParams = null,
-            fancy = maxRes || raw != null || format != ImageFormat.JPEG,
+            fancy = maxRes || raw != null || format != ImageFormat.JPEG || yuv != null,
+            yuv = yuv,
         )
     }
 
@@ -473,6 +492,7 @@ class CameraController(
                 videoSize = p.videoSize,
                 videoFps = p.fps,
                 needsLuma = semiAutoActive(),
+                multiFrameReady = p.yuv != null,
             )
         }
     }
@@ -551,9 +571,11 @@ class CameraController(
         runCatching { session?.close() }
         session = null
         sessionPlan = null
-        val readers = listOfNotNull(stillReader, rawReader)
+        val readers = listOfNotNull(stillReader, rawReader, yuvReader)
         stillReader = null
         rawReader = null
+        yuvReader = null
+        burst = null
         // Le ImageReader si chiudono dopo un attimo, quando la sessione ha smesso di usarle.
         if (readers.isNotEmpty()) handler.postDelayed({ readers.forEach { runCatching { it.close() } } }, 400)
         _status.update { it.copy(ready = false, busy = false) }
@@ -592,6 +614,12 @@ class CameraController(
                 rr.setOnImageAvailableListener({ r -> onRawImage(r) }, handler)
                 rawReader = rr
                 outputs += OutputConfiguration(rr.surface)
+            }
+            p.yuv?.let { size ->
+                val yr = ImageReader.newInstance(size.width, size.height, ImageFormat.YUV_420_888, MultiFrameMerger.MAX_FRAMES)
+                yr.setOnImageAvailableListener({ r -> onBurstImage(r) }, mergeHandler)
+                yuvReader = yr
+                outputs += OutputConfiguration(yr.surface)
             }
             recorderSurface = null
         } else {
@@ -646,10 +674,19 @@ class CameraController(
     }
 
     private fun closeSessionKeepDevice() {
-        if (session != null || stillReader != null || rawReader != null) closeSession()
+        if (session != null || stillReader != null || rawReader != null || yuvReader != null) closeSession()
     }
 
     private fun fallback(message: String) {
+        if (plan?.yuv != null && !multiFrameUnsupported) {
+            // Il telefono non accetta il flusso in più: si rinuncia solo al multi-scatto.
+            multiFrameUnsupported = true
+            val spec = activeSpec() ?: return
+            plan = makePlan(settings, spec, safe = false)
+            publishPlanStatus(plan!!)
+            createSession()
+            return
+        }
         if (useSafePlan) {
             _status.update { it.copy(error = "Impossibile avviare l'anteprima") }
             return
@@ -886,7 +923,8 @@ class CameraController(
     private fun applyProcessing(b: CaptureRequest.Builder, spec: CameraSpec, still: Boolean) {
         val s = settings
         val nr = when (s.profile) {
-            ImageProfile.NATURAL -> NoiseReduction.MINIMAL
+            // La riduzione rumore "Minima" lascia tutto il rumore di colore (puntini rossi e verdi).
+            ImageProfile.NATURAL -> NoiseReduction.HIGH_QUALITY
             ImageProfile.STANDARD -> NoiseReduction.HIGH_QUALITY
             ImageProfile.CUSTOM -> s.noiseReduction
         }
@@ -1149,6 +1187,7 @@ class CameraController(
         _status.update { it.copy(busy = true) }
         afTriggered = false
         afTriggerSeen = false
+        shotFrames = multiFrameCount(p, spec, needPrecapture)
         when {
             needPrecapture -> {
                 shot = Shot.WAIT_PRECAPTURE
@@ -1173,6 +1212,24 @@ class CameraController(
                 handler.postDelayed(shotTimeout, 1500)
             }
             else -> captureStill()
+        }
+    }
+
+    private var shotFrames = 1
+
+    /** Quanti fotogrammi unire per questo scatto (1 = scatto singolo dell'ISP). */
+    private fun multiFrameCount(p: Plan, spec: CameraSpec, flash: Boolean): Int {
+        if (p.yuv == null || yuvReader == null || merging || flash) return 1
+        val mode = settings.multiFrame
+        val iso = manualExposure(spec)?.first ?: lastAutoIso
+        val exp = manualExposure(spec)?.second ?: lastAutoExposure
+        if (exp > 250_000_000L) return 1 // pose lunghe: una sola esposizione
+        return when (mode) {
+            MultiFrame.OFF -> 1
+            MultiFrame.ON -> MultiFrameMerger.framesFor(iso)
+            MultiFrame.AUTO -> if (settings.mode == CaptureMode.PHOTO && (iso >= 320 || exp >= 30_000_000L)) {
+                MultiFrameMerger.framesFor(iso)
+            } else 1
         }
     }
 
@@ -1214,6 +1271,10 @@ class CameraController(
             return
         }
         shot = Shot.CAPTURING
+        if (shotFrames > 1 && yuvReader != null) {
+            captureBurst(s, dev, p, spec, shotFrames)
+            return
+        }
         val orientation = jpegOrientation(spec)
         val shotInfo = PendingShot(
             baseName = saver.newBaseName(),
@@ -1388,6 +1449,181 @@ class CameraController(
     private fun mirrorBitmap(b: Bitmap): Bitmap {
         val m = android.graphics.Matrix().apply { postScale(-1f, 1f) }
         return Bitmap.createBitmap(b, 0, 0, b.width, b.height, m, true)
+    }
+
+    // =====================================================================================
+    // Multi-scatto (media di più fotogrammi YUV, senza AI)
+    // =====================================================================================
+
+    private class Burst(
+        val id: Int,
+        val expected: Int,
+        val spec: CameraSpec,
+        val jpegOrientation: Int,
+        val location: Location?,
+        val crop: Float?,
+        val mirror: Boolean,
+        val quality: Int,
+        val baseName: String,
+        val size: Size,
+        val iso: Int,
+    ) {
+        @Volatile var merger: MultiFrameMerger? = null
+        @Volatile var received = 0
+        @Volatile var failed = 0
+        @Volatile var result: CaptureResult? = null
+        @Volatile var done = false
+        var captured = 0
+        var released = false
+    }
+
+    /** Il sensore ha finito: il telefono si può muovere e si può scattare di nuovo. */
+    private fun releaseBurstCamera(b: Burst) {
+        if (b.released) return
+        b.released = true
+        _status.update { it.copy(holdStill = false) }
+        finishShot()
+    }
+
+    private var burstIds = 0
+
+    private fun captureBurst(s: CameraCaptureSession, dev: CameraDevice, p: Plan, spec: CameraSpec, frames: Int) {
+        val reader = yuvReader ?: return
+        val size = p.yuv ?: return
+        val manual = manualExposure(spec)
+        val iso = manual?.first ?: lastAutoIso
+        val b = Burst(
+            id = ++burstIds,
+            expected = frames,
+            spec = spec,
+            jpegOrientation = jpegOrientation(spec),
+            location = currentLocation(),
+            crop = p.crop,
+            mirror = spec.isFront && settings.mirrorFront,
+            quality = settings.jpegQuality,
+            baseName = saver.newBaseName(),
+            size = size,
+            iso = iso.coerceAtLeast(50),
+        )
+        burst = b
+        merging = true
+        _status.update { it.copy(holdStill = true) }
+        try {
+            val requests = (0 until frames).map {
+                val rb = dev.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE)
+                rb.addTarget(reader.surface)
+                applySettings(rb, spec, p, still = true)
+                // Tutti i fotogrammi con la stessa esposizione e lo stesso bianco.
+                if (manual == null) {
+                    rb.set(CaptureRequest.CONTROL_AE_LOCK, true)
+                    rb.set(CaptureRequest.CONTROL_AWB_LOCK, true)
+                }
+                // Elaborazione veloce per fotogramma: la pulizia vera la fa la media.
+                if (spec.has(spec.nrModes, CameraMetadata.NOISE_REDUCTION_MODE_FAST)) {
+                    rb.set(CaptureRequest.NOISE_REDUCTION_MODE, CameraMetadata.NOISE_REDUCTION_MODE_FAST)
+                }
+                if (rb.get(CaptureRequest.EDGE_MODE) == CameraMetadata.EDGE_MODE_HIGH_QUALITY &&
+                    spec.has(spec.edgeModes, CameraMetadata.EDGE_MODE_FAST)
+                ) rb.set(CaptureRequest.EDGE_MODE, CameraMetadata.EDGE_MODE_FAST)
+                rb.build()
+            }
+            var started = false
+            s.captureBurst(requests, object : CameraCaptureSession.CaptureCallback() {
+                override fun onCaptureStarted(session: CameraCaptureSession, request: CaptureRequest, timestamp: Long, frameNumber: Long) {
+                    if (started) return
+                    started = true
+                    if (settings.shutterSound) runCatching { sound.play(MediaActionSound.SHUTTER_CLICK) }
+                    _events.tryEmit(CamEvent.Shutter)
+                }
+
+                override fun onCaptureCompleted(session: CameraCaptureSession, request: CaptureRequest, result: TotalCaptureResult) {
+                    if (b.result == null) b.result = result
+                    if (++b.captured >= b.expected) releaseBurstCamera(b)
+                }
+
+                override fun onCaptureFailed(session: CameraCaptureSession, request: CaptureRequest, failure: CaptureFailure) {
+                    b.failed++
+                    if (++b.captured >= b.expected) releaseBurstCamera(b)
+                    mergeHandler.post { maybeFinishBurst(b) }
+                }
+            }, handler)
+        } catch (e: Exception) {
+            burst = null
+            merging = false
+            _status.update { it.copy(holdStill = false) }
+            finishShot()
+            _events.tryEmit(CamEvent.Message("Scatto non riuscito"))
+            return
+        }
+        // Se qualche fotogramma non arriva si chiude comunque con quelli ricevuti.
+        mergeHandler.postDelayed({ if (!b.done) finishBurst(b) }, 6000)
+    }
+
+    /** Sul thread di fusione: ogni fotogramma viene allineato e sommato, poi chiuso subito. */
+    private fun onBurstImage(reader: ImageReader) {
+        val image = runCatching { reader.acquireNextImage() }.getOrNull() ?: return
+        val b = burst
+        try {
+            if (b == null || b.done) return
+            val m = b.merger ?: MultiFrameMerger(b.size.width, b.size.height, b.iso).also { b.merger = it }
+            m.add(image)
+            b.received++
+        } catch (t: Throwable) {
+            // Anche una memoria insufficiente finisce qui: si salva con i fotogrammi già uniti.
+            if (b != null) b.failed++
+        } finally {
+            image.close()
+        }
+        if (b != null) maybeFinishBurst(b)
+    }
+
+    private fun maybeFinishBurst(b: Burst) {
+        if (!b.done && b.received + b.failed >= b.expected) finishBurst(b)
+    }
+
+    /** Fusione terminata: JPEG, EXIF e salvataggio (sul thread di fusione). */
+    private fun finishBurst(b: Burst) {
+        if (b.done) return
+        b.done = true
+        handler.post {
+            if (burst === b) burst = null
+            releaseBurstCamera(b)
+        }
+        val m = b.merger
+        if (m == null || m.count == 0) {
+            merging = false
+            _events.tryEmit(CamEvent.Message("Scatto non riuscito"))
+            return
+        }
+        io.launch {
+            try {
+                val jpeg = m.toJpeg(b.quality.coerceIn(70, 100))
+                b.merger = null
+                val withExif = MultiFrameMerger.writeExif(
+                    jpeg = jpeg,
+                    cacheDir = context.cacheDir,
+                    result = b.result,
+                    spec = b.spec,
+                    exifOrientation = MediaSaver.exifOrientation(b.jpegOrientation),
+                    location = b.location,
+                    frames = m.count,
+                )
+                val uri = saver.saveJpeg(
+                    bytes = withExif,
+                    baseName = b.baseName,
+                    cropAspect = b.crop,
+                    mirror = b.mirror,
+                    quality = b.quality,
+                )
+                val thumb = MediaSaver.thumbnail(withExif)?.let { if (b.mirror) mirrorBitmap(it) else it }
+                if (uri != null) _events.tryEmit(CamEvent.Saved(uri, thumb, video = false))
+                else _events.tryEmit(CamEvent.Message("Impossibile salvare la foto"))
+            } catch (t: Throwable) {
+                _events.tryEmit(CamEvent.Message("Fusione non riuscita"))
+            } finally {
+                merging = false
+            }
+        }
     }
 
     // =====================================================================================

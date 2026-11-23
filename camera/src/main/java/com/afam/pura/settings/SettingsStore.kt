@@ -33,7 +33,8 @@ class SettingsStore(context: Context) {
             ),
             videoManual = p.getBoolean("videoManual", d.videoManual),
             profile = p.enum("profile", d.profile),
-            noiseReduction = p.enum("nr", d.noiseReduction),
+            noiseReduction = p.enum("nr2", d.noiseReduction),
+            multiFrame = p.enum("multiFrame", d.multiFrame),
             sharpening = p.enum("sharp", d.sharpening),
             tone = p.enum("tone", d.tone),
             distortionCorrection = p.getBoolean("distortion", d.distortionCorrection),
@@ -75,7 +76,8 @@ class SettingsStore(context: Context) {
             putInt("m_ev", s.manual.ev)
             putBoolean("videoManual", s.videoManual)
             putString("profile", s.profile.name)
-            putString("nr", s.noiseReduction.name)
+            putString("nr2", s.noiseReduction.name)
+            putString("multiFrame", s.multiFrame.name)
             putString("sharp", s.sharpening.name)
             putString("tone", s.tone.name)
             putBoolean("distortion", s.distortionCorrection)

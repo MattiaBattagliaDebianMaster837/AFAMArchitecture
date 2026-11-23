@@ -41,7 +41,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.afam.pura.settings.Aspect
 import com.afam.pura.settings.GridType
+import com.afam.pura.settings.CaptureMode
 import com.afam.pura.settings.ImageProfile
+import com.afam.pura.settings.MultiFrame
 import com.afam.pura.settings.NoiseReduction
 import com.afam.pura.settings.PhotoFormat
 import com.afam.pura.settings.Resolution
@@ -122,6 +124,17 @@ fun SettingsScreen(state: UiState, actions: CameraActions, onClose: () -> Unit) 
                     s.profile,
                     note = s.profile.description,
                 ) { v -> actions.update { it.copy(profile = v) } }
+            }
+            item {
+                Choice(
+                    "Riduzione rumore multi-scatto",
+                    MultiFrame.entries.map { it to it.label },
+                    s.multiFrame,
+                    note = "Con poca luce scatta 4–8 fotogrammi identici, li allinea e ne fa la media: il rumore " +
+                        "(i puntini colorati) sparisce senza inventare dettagli. Niente AI. Tieni fermo il telefono per un attimo." +
+                        if (!state.status.multiFrameReady && s.multiFrame != MultiFrame.OFF && s.mode != CaptureMode.VIDEO)
+                            "\nNon disponibile con RAW, Ultra HDR o 50 MP." else "",
+                ) { v -> actions.update { it.copy(multiFrame = v) } }
             }
             if (s.profile == ImageProfile.CUSTOM) {
                 item {

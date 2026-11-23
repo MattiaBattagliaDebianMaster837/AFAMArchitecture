@@ -50,7 +50,10 @@ Pura nel dock al posto di quella di Nothing.
 - Zoom con i pulsanti degli obiettivi (0.6×, 1×, 2×…) o con il pizzico
 
 **Elaborazione (nessuna AI)**
-- *Naturale* (predefinito): riduzione rumore minima e nessuna nitidezza artificiale
+- **Riduzione rumore multi-scatto**: con poca luce Pura scatta 4–8 fotogrammi, li allinea e ne fa
+  la media (rumore ridotto fino a ~2,8×, nessun dettaglio inventato). I soggetti in movimento
+  vengono presi da un solo fotogramma, quindi niente scie. Attiva in automatico con poca luce
+- *Naturale* (predefinito): riduzione rumore dell'ISP e nitidezza leggera
 - *Standard*: la pipeline classica dell'ISP in alta qualità
 - *Personalizzato*: riduzione rumore, nitidezza e curva tonale (standard, sRGB pura, piatta/Log)
 - Correzione distorsione e stabilizzazione ottica attivabili/disattivabili

@@ -101,6 +101,7 @@ class CameraSpec(val id: String, val chars: CameraCharacteristics) {
     } else emptyList()
     val rawSize: Size? = if (rawCapable) map?.getOutputSizes(ImageFormat.RAW_SENSOR)?.maxByOrNull { it.area } else null
     val previewSizes: List<Size> = map?.getOutputSizes(SurfaceTexture::class.java)?.sortedByArea().orEmpty()
+    val yuvSizes: List<Size> = map?.getOutputSizes(ImageFormat.YUV_420_888)?.sortedByArea().orEmpty()
     val videoSizes: List<Size> = map?.getOutputSizes(MediaRecorder::class.java)?.sortedByArea().orEmpty()
 
     fun minFrameDurationFor(size: Size, klass: Class<*>): Long =
