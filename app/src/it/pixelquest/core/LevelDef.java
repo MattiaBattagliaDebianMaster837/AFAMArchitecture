@@ -39,6 +39,19 @@ public final class LevelDef {
         this.music = world < 4 ? Music.W1 + world : Music.W5 + (world - 4);
     }
 
+    /** A battle arena: tiles from {@code rows}, drawn with the theme of {@code world} at level position {@code pos}. */
+    public LevelDef(String name, int world, int pos, int music, String[] rows) {
+        this.index = -1;
+        this.world = world;
+        this.pos = pos;
+        this.code = "ARENA";
+        this.name = name;
+        this.boss = false;
+        this.rows = rows;
+        this.bossId = -1;
+        this.music = music;
+    }
+
     /** True for the last boss of a world (mid-world castles of the Unipa worlds are not). */
     public boolean worldBoss() {
         return boss && (world < 4 || pos == 5);

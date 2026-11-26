@@ -179,10 +179,21 @@ public final class Ents {
             if (hitL || hitR) facing = -facing;
             if (kind == STAR && onGround) vy = -4.2f;
             if (y > L.th * T + 20) dead = true;
-            if (L.player.overlaps(this) && !L.player.dying) {
+            // story: the hero; battle: whoever grabs it first
+            Player taker = L.battle != null ? L.battle.touching(this, null, null)
+                    : (L.player.overlaps(this) && !L.player.dying ? L.player : null);
+            if (taker != null) {
                 dead = true;
-                Player p = L.player;
-                if (kind == HEART) {
+                Player p = taker;
+                if (L.battle != null && kind == HEART) { // battle: heals 30% of damage
+                    p.dmg = Math.max(0, p.dmg - 30);
+                    Sfx.play(Sfx.POWER);
+                    L.spawn(new FloatText(cx(), y, "-30%", 0xFFFF8A9A));
+                } else if (L.battle != null && kind == LIFE) { // battle: the potion fills the special bar
+                    p.energy = Player.ENERGY_MAX;
+                    Sfx.play(Sfx.LIFE);
+                    L.spawn(new FloatText(cx(), y, "SPECIALE PRONTA!", 0xFFFFE070));
+                } else if (kind == HEART) {
                     if (p.hp < Player.MAX_HP) p.heal();
                     else L.addCoin(5);
                     Sfx.play(Sfx.POWER);

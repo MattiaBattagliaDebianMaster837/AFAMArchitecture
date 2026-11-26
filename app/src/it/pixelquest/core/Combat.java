@@ -51,6 +51,8 @@ public final class Combat {
         Sprite spr;
         ArrayList<Entity> hitList = new ArrayList<>();
         float drag = 1f, rot;
+        /** battle: the hero who threw it (it hits every other fighter) */
+        public Player owner;
         int trail;
 
         PShot(int kind, float cx, float cy, float vx, float vy, Sprite spr, int hw, int hh) {
@@ -149,7 +151,7 @@ public final class Combat {
          * Francesco's burst of banknotes: they fly out around him, slow down quickly and cut every enemy (and enemy
          * shot) they touch. The notes of one throw share a hit list, so each enemy is hit once per throw.
          */
-        public static void cashBurst(Level L, float cx, float cy, int dir, int element, int upg) {
+        public static void cashBurst(Level L, float cx, float cy, int dir, int element, int upg, Player owner) {
             ArrayList<Entity> shared = new ArrayList<>();
             float sp = upg >= 2 ? 6.0f : 5.3f;
             // forward fan (degrees from straight ahead, negative = upwards) + some behind to cover his back
@@ -169,6 +171,7 @@ public final class Combat {
                 p.grv = 0.02f;
                 p.hitList = shared;
                 p.rot = k * 0.9f;
+                p.owner = owner;
                 L.spawn(p);
             }
         }
@@ -294,7 +297,33 @@ public final class Combat {
                     }
                 }
             }
+            // battle: the shot hits the other fighters
+            if (L.battle != null && owner != null) {
+                Player f = L.battle.touching(this, owner, hitList);
+                if (f != null) {
+                    hitList.add(f);
+                    L.battle.shotHit(this, f);
+                    L.spawn(new Ents.Impact(cx(), cy()));
+                    if (kind == COIN || kind == FOUNTAIN) Sfx.play(Sfx.COIN);
+                    if (--pierce < 0) {
+                        vanish();
+                        return;
+                    }
+                }
+            }
             if (y > L.th * T + 40 || x < L.camX - 200 || x > L.camX + L.game.W + 200) dead = true;
+        }
+
+        /** Battle: batted back by Andrea's bat, it now belongs to him and flies at the others. */
+        void reflectBy(Player p, int dir) {
+            owner = p;
+            hitList.clear();
+            float sp = Math.max(4.5f, Math.abs(vx) * 1.15f);
+            vx = dir * sp;
+            if (grv == 0) vy = -0.4f;
+            else vy = Math.min(vy, -2.5f);
+            facing = dir;
+            life = Math.max(life, 60);
         }
 
         void vanish() {
@@ -439,6 +468,7 @@ public final class Combat {
                     Combat.hit(p.L, e, 6, 4, p.power, Entity.PUNCH, true, p.cx());
                     p.L.spawn(new Ents.Impact(e.cx(), e.cy()));
                 }
+                if (p.L.battle != null) p.L.battle.melee(p, hx, hy, 136, 80, id, Battle.SUPER_PCT, Battle.SUPER_KB, p.power);
                 // smash bricks in the area
                 for (int r = (int) (hy / T); r <= (int) ((hy + 80) / T); r++)
                     for (int c = (int) (hx / T); c <= (int) ((hx + 136) / T); c++) {
@@ -501,10 +531,13 @@ public final class Combat {
                     best = e;
                 }
             }
+            if (L.battle != null) best = L.battle.nearestRival(p, cx(), cy(), 300);
             if (best != null) facing = best.cx() < cx() ? -1 : 1;
             else facing = p.facing;
             if (--cool <= 0 && best != null) {
-                L.spawn(PShot.aimed(PShot.HENCH, cx() + facing * 6, cy(), best.cx(), best.cy(), 6.5f, p.power));
+                PShot hs = PShot.aimed(PShot.HENCH, cx() + facing * 6, cy(), best.cx(), best.cy(), 6.5f, p.power);
+                hs.owner = p;
+                L.spawn(hs);
                 L.spawn(new Ents.Flash(cx() + facing * 8, cy()));
                 Sfx.play(Sfx.SHOOT);
                 cool = 24;
@@ -556,9 +589,11 @@ public final class Combat {
                         best = e;
                     }
                 }
+                if (L.battle != null) best = L.battle.nearestRival(p, cx(), cy(), 320);
                 float tx2 = best != null ? best.cx() : cx() + p.facing * 100, ty2 = best != null ? best.cy() : cy() + 30;
                 PShot s = PShot.aimed(PShot.TOTEM, cx(), cy() + 4, tx2, ty2, 4.5f, FIRE);
                 s.dmg = 3;
+                s.owner = p;
                 L.spawn(s);
                 Sfx.play(Sfx.CANNON);
                 cool = 18;

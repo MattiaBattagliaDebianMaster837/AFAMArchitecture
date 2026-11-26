@@ -63,6 +63,34 @@ public class Sim {
         else if (sc.equals("batpose")) batpose();
         else if (sc.equals("maptest")) maptest();
         else if (sc.equals("towns")) towns();
+        else if (sc.equals("launch")) it.pixelquest.core.LaunchCheck.run(g);
+        else if (sc.equals("recovery")) it.pixelquest.core.RecoveryCheck.run(g);
+        else if (sc.equals("trace")) it.pixelquest.core.TraceCheck.run(g, Integer.parseInt(args[2]), Integer.parseInt(args[3]), Integer.parseInt(args[4]), Integer.getInteger("traceFrames", 60 * 20));
+        else if (sc.equals("bpause")) it.pixelquest.core.BattleCheck.pause(g);
+        else if (sc.equals("bmenus")) {
+            it.pixelquest.core.BattleCheck.menus(g, new it.pixelquest.core.BattleCheck.Shot() {
+                public void save(String name) {
+                    try {
+                        g.render();
+                        Png.save(g.gfx, 2, out + "/" + name + ".png");
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            });
+        } else if (sc.equals("battle")) {
+            it.pixelquest.core.BattleCheck.abilities(g);
+            it.pixelquest.core.BattleCheck.run(g, args.length > 2 ? Integer.parseInt(args[2]) : 7, args.length > 3 ? Integer.parseInt(args[3]) : 2,
+                    new it.pixelquest.core.BattleCheck.Shot() {
+                        public void save(String name) {
+                            try {
+                                Png.save(g.gfx, 2, out + "/" + name + ".png");
+                            } catch (Exception e) {
+                                throw new RuntimeException(e);
+                            }
+                        }
+                    });
+        }
         else if (sc.equals("mapshots")) mapshots();
         else if (sc.equals("story")) story();
         else if (sc.equals("cash")) cash();

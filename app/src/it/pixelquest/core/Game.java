@@ -2,7 +2,8 @@ package it.pixelquest.core;
 
 /** Top-level game: screens, flow between them and persistence. Platform independent. */
 public final class Game {
-    public static final int TITLE = 0, SELECT = 1, MAP = 2, PLAY = 3, PAUSE = 4, GAMEOVER = 5, ENDING = 6, MENU = 7, SHOP = 8, STORY = 9;
+    public static final int TITLE = 0, SELECT = 1, MAP = 2, PLAY = 3, PAUSE = 4, GAMEOVER = 5, ENDING = 6, MENU = 7, SHOP = 8, STORY = 9,
+            BSETUP = 10, BRESULT = 11;
 
     public int W, H;
     public Gfx gfx;
@@ -32,6 +33,10 @@ public final class Game {
     private final WorldMap map;
     private Theme titleTheme;
     private Sprite[][] titleHeroes;
+    /** title screen: 0 = story mode, 1 = battle mode */
+    private int titleChoice;
+    /** battle mode screens and choices */
+    final BattleMenu bmenu = new BattleMenu(this);
 
     public Game(int w, int h, Save.Storage storage) {
         Hero.init();
@@ -119,7 +124,16 @@ public final class Game {
                 audio.music(Music.MAP);
                 break;
             case PLAY:
-                startLevel(param);
+                if (param < 0) startBattle();
+                else startLevel(param);
+                break;
+            case BSETUP:
+                level = null;
+                bmenu.enterSetup(param);
+                audio.music(Music.TITLE);
+                break;
+            case BRESULT:
+                audio.music(Music.CLEAR);
                 break;
             case GAMEOVER:
                 level = null;
@@ -237,6 +251,8 @@ public final class Game {
             case PAUSE: updatePause(); break;
             case MENU: updatePause(); break;
             case SHOP: updateShop(); break;
+            case BSETUP: bmenu.updateSetup(); break;
+            case BRESULT: bmenu.updateResults(); break;
             case STORY:
                 if (screenT > 40 && (input.aP || input.bP || !touch.taps.isEmpty() || input.backP)) {
                     screenT = 0;
@@ -258,10 +274,29 @@ public final class Game {
             wantsExit = true;
             return;
         }
-        if (screenT > 20 && (input.aP || input.bP || input.cP || !touch.taps.isEmpty())) {
-            Sfx.play(Sfx.CONFIRM);
-            go(SELECT, 0);
+        if (screenT <= 20) return;
+        if (input.leftP || input.rightP) {
+            titleChoice = 1 - titleChoice;
+            Sfx.play(Sfx.SELECT);
         }
+        int pick = -1;
+        if (input.aP || input.cP) pick = titleChoice;
+        for (float[] tp : touch.taps)
+            for (int k = 0; k < 2; k++) {
+                int[] r = titleButton(k);
+                if (tp[0] >= r[0] && tp[0] < r[0] + r[2] && tp[1] >= r[1] && tp[1] < r[1] + r[3]) pick = k;
+            }
+        if (pick < 0) return;
+        titleChoice = pick;
+        Sfx.play(Sfx.CONFIRM);
+        if (pick == 0) go(SELECT, 0); // story mode: everything as before
+        else go(BSETUP, 0); // battle mode
+    }
+
+    /** The STORIA / BATTAGLIA buttons on the title screen. */
+    private int[] titleButton(int k) {
+        int bw = 118, bh = 24;
+        return new int[]{W / 2 + (k == 0 ? -bw - 8 : 8), 96, bw, bh};
     }
 
     private void updateSelect() {
@@ -324,6 +359,18 @@ public final class Game {
             }
         }
         level.update(input);
+        if (level.battle != null && level.battle.over && level.battle.overT > 140) {
+            bmenu.last = level.battle;
+            go(BRESULT, 0);
+        }
+    }
+
+    /** Battle mode: a new fight with the choices of the setup screens (also used for the rematch). */
+    private void startBattle() {
+        Battle b = new Battle(this, bmenu.cfg);
+        level = b.level;
+        bmenu.last = b;
+        touch.cancelAll();
     }
 
     // menu item ids
@@ -342,7 +389,7 @@ public final class Game {
             case I_VIBRATION: return "VIBRAZIONE: " + (save.vibration ? "SI" : "NO");
             case I_MUSIC: return "MUSICA: " + (save.music ? "SI" : "NO");
             case I_SFX: return "EFFETTI: " + (save.sfx ? "SI" : "NO");
-            case I_EXIT_LEVEL: return "ESCI DAL LIVELLO";
+            case I_EXIT_LEVEL: return level != null && level.battle != null ? "ESCI DALLA BATTAGLIA" : "ESCI DAL LIVELLO";
             case I_HERO: return "CAMBIA PERSONAGGIO";
             case I_SHOP: return "POTENZIAMENTI (NEGOZIO)";
             default: return "SCHERMATA DEL TITOLO";
@@ -414,6 +461,10 @@ public final class Game {
                 Sfx.play(Sfx.SELECT);
                 break;
             case I_EXIT_LEVEL:
+                if (level.battle != null) {
+                    go(BSETUP, 0);
+                    break;
+                }
                 carryPower = level.player.power;
                 carryEnergy = level.player.energy;
                 checkpointLevel = -1;
@@ -448,6 +499,8 @@ public final class Game {
             case PAUSE: renderPause(g); break;
             case MENU: renderPause(g); break;
             case SHOP: renderShop(g); break;
+            case BSETUP: bmenu.renderSetup(g); break;
+            case BRESULT: bmenu.renderResults(g); break;
             case STORY: renderStory(g); break;
             case GAMEOVER: renderGameOver(g); break;
             case ENDING: renderEnding(g); break;
@@ -460,7 +513,7 @@ public final class Game {
         level.renderHud(g);
         if (controls && level.state == Level.PLAY) {
             touch.visible = true;
-            touch.draw(g, level.player.carrying != null ? "CALCIA" : hero().cLabel(), true, true);
+            touch.draw(g, level.player.carrying != null ? "CALCIA" : level.player.hero.cLabel(), true, true);
         }
     }
 
@@ -542,8 +595,19 @@ public final class Game {
         }
         // a slime chasing them, for fun
         g.blit(Art.slime[0][(frame / 12) % 2].scaled(2), W / 2 - (n * gap) / 2 - 44, gy - 22);
-        if ((frame / 30) % 2 == 0) g.textC("TOCCA PER INIZIARE", W / 2, H - 14, 0xFFFFFFFF, 0xFF000000, 1);
-        g.text("V1.7", W - 28, H - 10, 0xFFFFFFFF, 1, 160);
+        // mode choice
+        String[] modes = {"STORIA", "BATTAGLIA"};
+        for (int k = 0; k < 2; k++) {
+            int[] r = titleButton(k);
+            boolean sel = k == titleChoice;
+            int pulse = sel ? (int) Math.round(Math.sin(frame * 0.15) * 1) : 0;
+            g.fillA(r[0] + 2, r[1] + 3, r[2], r[3], 0xFF000000, 90);
+            g.fillA(r[0], r[1] - pulse, r[2], r[3], k == 0 ? 0xFF2A5AB0 : 0xFF8A1A2A, sel ? 240 : 170);
+            g.rect(r[0], r[1] - pulse, r[2], r[3], sel ? 0xFFFFE070 : 0xFFFFFFFF);
+            if (sel) g.rect(r[0] + 1, r[1] + 1 - pulse, r[2] - 2, r[3] - 2, 0xFFFFE070);
+            g.textC(modes[k], r[0] + r[2] / 2, r[1] + 5 - pulse, sel ? 0xFFFFE070 : 0xFFFFFFFF, 0xFF000000, 2);
+        }
+        g.text("V1.8", W - 28, H - 10, 0xFFFFFFFF, 1, 160);
     }
 
     private void renderSelect(Gfx g) {

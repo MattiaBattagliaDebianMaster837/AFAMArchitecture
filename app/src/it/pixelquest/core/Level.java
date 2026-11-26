@@ -19,10 +19,12 @@ public final class Level {
     /** first ground row of the original layout (boss arenas use it as the floor) */
     public final int floorRow;
     public final byte[] tiles, data, variant;
-    private final byte[] bump;
+    final byte[] bump;
     public final ArrayList<Entity> ents = new ArrayList<>();
     private final ArrayList<Entity> adds = new ArrayList<>();
     public Player player;
+    /** set in battle mode: the battle drives update / render / HUD and owns the fighters */
+    public Battle battle;
     public float camX, camY;
     public int frame, coins, gems, gemCount;
     public float spawnX, spawnY;
@@ -172,14 +174,14 @@ public final class Level {
         add(e);
     }
 
-    private void flushAdds() {
+    void flushAdds() {
         ents.addAll(adds);
         adds.clear();
     }
 
     // ----------------------------------------------------------------- tiles
     public byte tile(int c, int r) {
-        if (c < 0 || c >= tw) return STONE; // side walls
+        if (c < 0 || c >= tw) return battle != null ? EMPTY : STONE; // side walls (open sky around a battle arena)
         if (r < 0) return EMPTY;
         if (r >= th) return EMPTY;
         byte t = tiles[r * tw + c];
@@ -194,7 +196,7 @@ public final class Level {
     /** gravity multiplier (a physics professor can double it) */
     public float gravMul = 1f;
 
-    private void updatePhase() {
+    void updatePhase() {
         boolean pa = (frame / PHASE) % 2 == 0;
         if (pa == phaseA) return;
         phaseA = pa;
@@ -291,7 +293,7 @@ public final class Level {
                 if (solid(tile(col, r))) {
                     e.x = col * T - e.w;
                     e.hitR = true;
-                    if (e == player) player.touchTile(col, r);
+                    if (e instanceof Player) ((Player) e).touchTile(col, r);
                     break;
                 }
         } else {
@@ -300,7 +302,7 @@ public final class Level {
                 if (solid(tile(col, r))) {
                     e.x = (col + 1) * T;
                     e.hitL = true;
-                    if (e == player) player.touchTile(col, r);
+                    if (e instanceof Player) ((Player) e).touchTile(col, r);
                     break;
                 }
         }
@@ -322,9 +324,9 @@ public final class Level {
                     e.y = row * T - e.h;
                     e.vy = 0;
                     e.onGround = true;
-                    if (e == player) {
+                    if (e instanceof Player) {
                         groundTile = t;
-                        if (t == SPIKE) player.hurt(e.cx(), true);
+                        if (t == SPIKE) ((Player) e).hurt(e.cx(), true);
                     }
                     break;
                 }
@@ -345,7 +347,7 @@ public final class Level {
                 e.y = (row + 1) * T;
                 e.vy = 0;
                 e.hitCeil = true;
-                if (e == player) {
+                if (e instanceof Player) {
                     hitBlock(best, row, true);
                 }
             }
@@ -429,6 +431,7 @@ public final class Level {
     }
 
     public void addCoin(int n) {
+        if (battle != null) return; // no coins in battle
         coins += n;
         game.save.totalCoins += n; // coins are kept: they buy upgrades in the shop
         game.save.coinLife += n;
@@ -450,6 +453,10 @@ public final class Level {
 
     // ------------------------------------------------------------------ update
     public void update(Input in) {
+        if (battle != null) {
+            battle.update(in);
+            return;
+        }
         frame++;
         if (bannerT > 0) bannerT--;
         if (shake > 0) shake--;
@@ -707,7 +714,8 @@ public final class Level {
                 g.blit(s, x, y);
             }
         for (Entity e : ents) if (!(e instanceof Ents.Particle)) e.render(g, cx, cy);
-        player.render(g, cx, cy);
+        if (battle != null) battle.renderFighters(g, cx, cy);
+        else player.render(g, cx, cy);
         for (Entity e : ents) if (e instanceof Ents.Particle) e.render(g, cx, cy);
         // lava glow over everything near the bottom in lava world
         g.ox = 0;
@@ -740,6 +748,10 @@ public final class Level {
     }
 
     public void renderHud(Gfx g) {
+        if (battle != null) {
+            battle.renderHud(g);
+            return;
+        }
         Player p = player;
         // hearts + flower power
         for (int i = 0; i < Player.MAX_HP; i++) g.blit(i < p.hp ? Art.hudHeart : Art.hudHeartEmpty, 4 + i * 12, 4);

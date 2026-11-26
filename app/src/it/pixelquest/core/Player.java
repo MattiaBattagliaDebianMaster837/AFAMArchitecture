@@ -46,6 +46,21 @@ public final class Player extends Entity {
     int anim;
     int frameIdx = HeroArt.IDLE0;
 
+    // ---- battle mode (Smash-like): damage percentage, stocks, KO / respawn, CPU
+    /** damage percentage: the higher it is, the farther hits send this fighter flying */
+    public float dmg;
+    public int stocks, koT, slot, kos, falls, place, frozenT;
+    /** one spin jump in mid air (B) to get back to the arena; restored on landing or on a wall */
+    public int airSpins = 1;
+    public boolean cpu, out;
+    /** damage dealt to the others (results screen) */
+    public float dealt;
+    public Player lastHitBy;
+    public int lastHitT;
+    /** ground under this hero (the level only remembers the last mover) */
+    byte groundT;
+    static final Input NO_INPUT = new Input();
+
     public Player(Level L, Hero hero, float x, float y) {
         this.L = L;
         this.hero = hero;
@@ -54,9 +69,10 @@ public final class Player extends Entity {
         w = 10;
         h = 22;
         facing = 1;
-        upg = L.game.save.upgrade(hero.id);
-        power = L.game.carryPower;
-        energy = L.game.carryEnergy;
+        boolean battle = L.battle != null;
+        upg = battle ? Battle.UPG : L.game.save.upgrade(hero.id);
+        power = battle ? Combat.NONE : L.game.carryPower;
+        energy = battle ? 0 : L.game.carryEnergy;
         switch (hero.ability_) {
             case Hero.PUNCH:
                 cdTime = upg >= 2 ? 15 : 24;
@@ -66,7 +82,7 @@ public final class Player extends Entity {
             case Hero.GUN:
                 maxCharges = 2 + upg;
                 batch = true;
-                rechargeTime = 600;
+                rechargeTime = battle ? 200 : 600;
                 break;
             case Hero.COIN:
                 maxCharges = upg >= 1 ? 2 : 1;
@@ -89,6 +105,17 @@ public final class Player extends Entity {
     // ------------------------------------------------------------------ update
     public void update(Input in) {
         t++;
+        if (L.battle != null) {
+            if (out) return;
+            if (koT > 0) {
+                if (--koT == 0) L.battle.respawn(this);
+                return;
+            }
+            if (lastHitT > 0 && --lastHitT == 0) lastHitBy = null;
+            if (frozenT > 0) frozenT--;
+            // launched by a hit (hitstun) or frozen: no control
+            if (hurtT > 0 || frozenT > 0) in = NO_INPUT;
+        }
         if (dying) {
             deathT++;
             if (deathT > 30) {
@@ -101,7 +128,7 @@ public final class Player extends Entity {
         if (invuln > 0) invuln--;
         if (starT > 0) {
             starT--;
-            if (starT == 0) L.game.audio.music(L.arenaLocked ? Music.BOSS : L.def.music);
+            if (starT == 0 && L.battle == null) L.game.audio.music(L.arenaLocked ? Music.BOSS : L.def.music);
             if (t % 4 == 0) L.spawn(new Ents.Sparkle(x + (t * 7 % w), y + (t * 5 % h)));
         }
         if (power != Combat.NONE && t % 7 == 0)
@@ -132,7 +159,7 @@ public final class Player extends Entity {
         if (hurtT > 10 || wallLock > 0) dir = wallLock > 0 ? 0 : dir;
         if (wallLock > 0) wallLock--;
 
-        boolean onIce = onGround && L.groundTile == Level.ICE;
+        boolean onIce = onGround && groundT == Level.ICE;
         // ---------------------------------------------------------- horizontal
         float max = runHeld ? hero.run : hero.walk;
         running = runHeld && dir != 0;
@@ -176,8 +203,11 @@ public final class Player extends Entity {
             else chain = 0;
         } else if (coyote > 0) coyote--;
         boolean canGroundJump = onGround || coyote > 0;
+        if (onGround) airSpins = 1;
         if (jumpBuf > 0 && canGroundJump) doJump(false);
         else if (spinBuf > 0 && canGroundJump) doJump(true);
+        // battle: B in mid air (also sliding down the side of the arena) is the recovery spin, up along the wall
+        else if (L.battle != null && spinBuf > 0 && jumpBuf == 0 && !onGround && airSpins > 0) airSpin(dir);
         else if ((jumpBuf > 0 || spinBuf > 0) && !onGround && wallDir != 0) wallJump(spinBuf > 0 && jumpBuf == 0);
         if (jumpBuf > 0) jumpBuf--;
         if (spinBuf > 0) spinBuf--;
@@ -197,6 +227,7 @@ public final class Player extends Entity {
         wasOnGround = onGround;
         boolean wasRiding = riding != null;
         L.move(this, vx, vy);
+        groundT = L.groundTile;
         if (hitL || hitR) {
             if (Math.abs(vx) > 2.4f && onGround) Sfx.play(Sfx.BUMP);
             vx = 0;
@@ -212,7 +243,7 @@ public final class Player extends Entity {
                     vy = 0;
                     onGround = true;
                     riding = e;
-                    L.groundTile = Level.STONE;
+                    groundT = Level.STONE;
                     if (e instanceof Ents.Platform) ((Ents.Platform) e).stepped();
                     break;
                 }
@@ -220,15 +251,17 @@ public final class Player extends Entity {
         }
         if (onGround && !wasOnGround) land();
         // conveyor belts carry the hero
-        if (onGround && riding == null && (L.groundTile == Level.CONV_L || L.groundTile == Level.CONV_R))
-            L.moveX(this, L.groundTile == Level.CONV_L ? -1.2f : 1.2f);
-        if (x < 0) {
-            x = 0;
-            vx = 0;
-        }
-        if (x + w > L.tw * Level.T) {
-            x = L.tw * Level.T - w;
-            vx = 0;
+        if (onGround && riding == null && (groundT == Level.CONV_L || groundT == Level.CONV_R))
+            L.moveX(this, groundT == Level.CONV_L ? -1.2f : 1.2f);
+        if (L.battle == null) { // in battle the arena is open: fly off the sides and it's a KO
+            if (x < 0) {
+                x = 0;
+                vx = 0;
+            }
+            if (x + w > L.tw * Level.T) {
+                x = L.tw * Level.T - w;
+                vx = 0;
+            }
         }
 
         // -------------------------------------------------------------- walls
@@ -248,6 +281,7 @@ public final class Player extends Entity {
         }
         boolean wasSliding = wallSliding;
         wallSliding = wallStick > 0 && wallDir != 0 && vy > 0;
+        if (wallSliding) airSpins = 1;
         if (wallSliding) {
             facing = wallDir;
             spinning = false;
@@ -315,7 +349,7 @@ public final class Player extends Entity {
                 }
                 Sfx.play(Sfx.PUNCH);
                 if (onGround) vx += facing * 0.8f;
-                if (power != Combat.NONE) L.spawn(Combat.PShot.orb(cx() + facing * 10, y + 10, facing, power));
+                if (power != Combat.NONE) shoot(Combat.PShot.orb(cx() + facing * 10, y + 10, facing, power));
                 break;
             case Hero.GUN:
                 if (cd > 0) return;
@@ -326,7 +360,7 @@ public final class Player extends Entity {
                 }
                 charges--;
                 actT = 14;
-                L.spawn(Combat.PShot.bullet(facing > 0 ? right() + 5 : x - 5, y + 11, facing, power));
+                shoot(Combat.PShot.bullet(facing > 0 ? right() + 5 : x - 5, y + 11, facing, power));
                 L.spawn(new Ents.Flash(facing > 0 ? right() + 6 : x - 6, y + 11));
                 Sfx.play(Sfx.SHOOT);
                 if (onGround) vx -= facing * 0.6f;
@@ -340,9 +374,9 @@ public final class Player extends Entity {
                 }
                 charges--;
                 actT = 14;
-                L.spawn(Combat.PShot.coin(cx() + facing * 8, y + 6, facing, vx, power));
+                shoot(Combat.PShot.coin(cx() + facing * 8, y + 6, facing, vx, power));
                 // the banknotes are a real attack: they cut every enemy around him
-                Combat.PShot.cashBurst(L, cx() + facing * 4, y + 9, facing, power, upg);
+                Combat.PShot.cashBurst(L, cx() + facing * 4, y + 9, facing, power, upg, this);
                 Sfx.play(Sfx.COIN);
                 break;
             case Hero.BAT:
@@ -351,7 +385,7 @@ public final class Player extends Entity {
                 cd = cdTime;
                 curPunch = ++L.punchId;
                 Sfx.play(Sfx.SPIN);
-                if (power != Combat.NONE) L.spawn(Combat.PShot.orb(cx() + facing * 12, y + 8, facing, power));
+                if (power != Combat.NONE) shoot(Combat.PShot.orb(cx() + facing * 12, y + 8, facing, power));
                 break;
             default: // BALL
                 if (cd > 0) return;
@@ -362,10 +396,16 @@ public final class Player extends Entity {
                 }
                 charges--;
                 actT = 16;
-                L.spawn(Combat.PShot.ball(cx() + facing * 9, bottom() - 6, facing, ballSpeed, ballBounces, power));
+                shoot(Combat.PShot.ball(cx() + facing * 9, bottom() - 6, facing, ballSpeed, ballBounces, power));
                 Sfx.play(Sfx.KICK);
                 break;
         }
+    }
+
+    /** Spawn a shot thrown by this hero (in battle it hits the other fighters, never its owner). */
+    void shoot(Combat.PShot s) {
+        s.owner = this;
+        L.spawn(s);
     }
 
     private void punchHits() {
@@ -382,6 +422,7 @@ public final class Player extends Entity {
                 Sfx.play(Sfx.HIT);
             }
         }
+        if (L.battle != null) L.battle.melee(this, hx, hy, hw, hh, curPunch, Battle.PUNCH_PCT, Battle.PUNCH_KB, power);
         int c = (int) Math.floor((facing > 0 ? hx + hw : hx) / Level.T);
         int r = (int) Math.floor((hy + hh / 2) / Level.T);
         byte tl = L.tile(c, r);
@@ -398,6 +439,16 @@ public final class Player extends Entity {
         float hx = facing > 0 ? cx() : cx() - bw, hy = bottom() - bh - 2;
         for (int i = 0; i < L.ents.size(); i++) {
             Entity e = L.ents.get(i);
+            if (L.battle != null && e instanceof Combat.PShot && !e.dead && e.hitStamp != curPunch && e.overlaps(hx, hy, bw, bh)) {
+                Combat.PShot s = (Combat.PShot) e; // battle: bat a rival's shot back at them
+                if (s.owner != null && s.owner != this) {
+                    s.hitStamp = curPunch;
+                    s.reflectBy(this, facing);
+                    L.spawn(new Ents.Impact(s.cx(), s.cy()));
+                    Sfx.play(Sfx.HIT);
+                }
+                continue;
+            }
             if (e.dead || e.hitStamp == curPunch || !Combat.target(e)) continue;
             if (!e.overlaps(hx, hy, bw, bh)) continue;
             e.hitStamp = curPunch;
@@ -423,6 +474,7 @@ public final class Player extends Entity {
                 }
             } else Combat.hit(L, e, 2, 1, power, PUNCH, false, cx());
         }
+        if (L.battle != null) L.battle.melee(this, hx, hy, bw, bh, curPunch, Battle.BAT_PCT, Battle.BAT_KB, power);
         // smash the first brick along the swing, from the hero's front to the tip of the bat
         // (checking only the tip column missed a wall the hero was standing right against)
         int c0 = (int) Math.floor((facing > 0 ? right() - 1 : x + 1) / Level.T);
@@ -443,7 +495,7 @@ public final class Player extends Entity {
         if (specialT > 0) return;
         boolean wasFull = energy >= ENERGY_MAX;
         energy = Math.min(ENERGY_MAX, energy + e);
-        if (!wasFull && energy >= ENERGY_MAX) {
+        if (!wasFull && energy >= ENERGY_MAX && !cpu) {
             Sfx.play(Sfx.CHECK);
             L.spawn(new Ents.FloatText(cx(), y - 8, "SPECIALE PRONTA!", 0xFFFFE070));
         }
@@ -477,7 +529,7 @@ public final class Player extends Entity {
             default:
                 actT = 16;
                 specialT = 60;
-                L.spawn(Combat.PShot.giant(cx() + facing * 20, bottom() - 16, facing));
+                shoot(Combat.PShot.giant(cx() + facing * 20, bottom() - 16, facing));
                 Sfx.play(Sfx.KICK);
                 break;
         }
@@ -491,7 +543,7 @@ public final class Player extends Entity {
             if (specialT % 3 == 0) {
                 double a = -Math.PI / 2 + Math.sin(t * 0.7) * 1.25;
                 float sp = 4.2f + (t * 7 % 10) * 0.25f;
-                L.spawn(Combat.PShot.fountain(cx(), y + 2, (float) Math.cos(a) * sp, (float) Math.sin(a) * sp));
+                shoot(Combat.PShot.fountain(cx(), y + 2, (float) Math.cos(a) * sp, (float) Math.sin(a) * sp));
             }
             if (specialT % 5 == 0) L.spawn(new Combat.Banknote(cx(), y + 2, (float) Math.sin(t) * 2.5f, -3f - (t % 3)));
             if (specialT % 4 == 0) L.spawn(new Ents.Sparkle(x + (t * 5) % 14 - 2, y + (t * 3) % 20));
@@ -547,6 +599,26 @@ public final class Player extends Entity {
         L.spawn(new Ents.Dust(wallDir > 0 ? right() : x, y + 12));
         Sfx.play(Sfx.WALLJUMP);
         wallDir = 0;
+    }
+
+    /** Battle only: one spin jump in mid air, with a push towards the stick, to get back on the arena. */
+    private void airSpin(int dir) {
+        vy = -(hero.jump + 1.2f);
+        if (dir != 0) { // a push towards the stick, without cancelling the momentum of a launch
+            vx += dir * 2.6f;
+            if (vx * dir > 3.4f) vx = dir * 3.4f;
+            facing = dir;
+        }
+        wallStick = 0;
+        wallSliding = false;
+        spinning = true;
+        flipping = false;
+        airSpins--;
+        jumpBuf = spinBuf = 0;
+        jumpHoldMin = 14;
+        riding = null;
+        Sfx.play(Sfx.SPIN);
+        L.spawn(new Ents.Puff(cx(), bottom()));
     }
 
     private void land() {
@@ -623,6 +695,10 @@ public final class Player extends Entity {
     }
 
     public void hurt(float fromX, boolean spikes) {
+        if (L.battle != null) { // hazards (spikes, a stray shell...) in battle
+            battleHit(spikes ? 12 : 8, spikes ? 3.5f : 2.2f, fromX, null, Combat.NONE);
+            return;
+        }
         if (dying || invuln > 0 || starT > 0) return;
         if (L.state != Level.PLAY) return;
         L.game.attemptHits++;
@@ -648,7 +724,47 @@ public final class Player extends Entity {
         Sfx.play(Sfx.HURT);
     }
 
+    /**
+     * Battle: hit for {@code pct} percent. Knockback grows with the damage already taken, Smash style; the hero
+     * is launched (no control for a moment) and, if it flies past the edges of the arena, it is a KO.
+     */
+    public void battleHit(float pct, float kb, float fromX, Player by, int element) {
+        if (out || koT > 0 || invuln > 0 || starT > 0 || by == this) return;
+        if (element == Combat.FIRE) pct += 3;
+        dmg = Math.min(999, dmg + pct);
+        float k = Math.min(13f, kb * (1 + dmg / 45f));
+        int dir = cx() < fromX ? -1 : 1;
+        vx = dir * k * 0.82f;
+        vy = -(1.3f + k * 0.62f);
+        onGround = false;
+        riding = null;
+        jumpHoldMin = 0;
+        spinning = flipping = false;
+        wallStick = 0;
+        hurtT = 6 + (int) (k * 2.8f);
+        invuln = 10;
+        carrying = null;
+        if (power != Combat.NONE) { // a hit costs the flower
+            power = Combat.NONE;
+            for (int q = 0; q < 6; q++) L.spawn(new Ents.Sparkle(x + q * 2, y + (q * 5) % 20));
+        }
+        if (element == Combat.ICE) frozenT = 45;
+        lastHitBy = by;
+        lastHitT = 360;
+        if (by != null) {
+            by.dealt += pct;
+            by.addEnergy(pct * 1.1f);
+        }
+        L.shake = Math.max(L.shake, 3 + (int) k / 2);
+        Sfx.play(k > 7 ? Sfx.BOSSHIT : Sfx.HURT);
+        L.spawn(new Ents.Impact(cx(), cy()));
+    }
+
     public void die() {
+        if (L.battle != null) {
+            L.battle.ko(this);
+            return;
+        }
         if (dying) return;
         dying = true;
         hp = 0;
@@ -669,8 +785,8 @@ public final class Player extends Entity {
     }
 
     public void star() {
-        starT = 600;
-        L.game.audio.music(Music.STAR);
+        starT = L.battle != null ? 480 : 600;
+        if (L.battle == null) L.game.audio.music(Music.STAR);
     }
 
     // ------------------------------------------------------------- animation
@@ -722,6 +838,7 @@ public final class Player extends Entity {
 
     /** Overlay colour for star / flower power / Re Mida. */
     private int tint() {
+        if (frozenT > 0) return 0xFF9AE8FF;
         if (starT > 0 && (t / 2) % 3 != 0) {
             int[] rb = {0xFFFFE040, 0xFFFF6AD0, 0xFF6AE0FF, 0xFF8AFF6A};
             return rb[(t / 2) % 4];
@@ -733,6 +850,7 @@ public final class Player extends Entity {
     }
 
     private int tintAlpha() {
+        if (frozenT > 0) return 170;
         if (starT > 0) return 120;
         if (hero.ability_ == Hero.COIN && specialT > 0) return 150;
         return (t / 6) % 2 == 0 ? 70 : 50;
@@ -740,6 +858,7 @@ public final class Player extends Entity {
 
     @Override
     public void render(Gfx g, int camX, int camY) {
+        if (out || koT > 0) return;
         if (invuln > 0 && (invuln / 3) % 2 == 0 && !dying && specialT == 0) return;
         Sprite[] f = hero.frames;
         float px = cx() - camX, py = bottom() - camY;

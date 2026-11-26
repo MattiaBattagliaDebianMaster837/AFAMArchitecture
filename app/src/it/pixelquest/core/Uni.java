@@ -168,6 +168,8 @@ public final class Uni {
         public int state = IDLE;
         int idleT, safeT, bounces, moveT;
         Player carrier;
+        /** battle: who kicked it */
+        Player kicker;
 
         Shell(float x, float y) {
             this.x = x;
@@ -194,6 +196,7 @@ public final class Uni {
         }
 
         public void kick(Player p) {
+            kicker = p;
             state = MOVING;
             carrier = null;
             p.carrying = null;
@@ -223,6 +226,8 @@ public final class Uni {
                         vx = 0;
                         p.bounce(L.input.a || L.input.b);
                         Sfx.play(Sfx.STOMP);
+                    } else if (L.battle != null) {
+                        if (p != kicker || safeT <= 0) L.battle.shellHit(this, p);
                     } else if (safeT <= 0) p.hurt(cx(), false);
                     break;
                 default:
@@ -244,6 +249,10 @@ public final class Uni {
                     idleT++;
                     vx = 0;
                     physics(0.4f, 6);
+                    if (idleT > 480 && L.battle != null) { // battle: no turtles, the shell just breaks
+                        breakApart();
+                        break;
+                    }
                     if (idleT > 480) { // the turtle comes back out
                         dead = true;
                         Turtle tt = new Turtle(x - 1, bottom() - 16);
@@ -258,6 +267,14 @@ public final class Uni {
                     }
                     x = p.facing > 0 ? p.right() - 3 : p.x - w + 3;
                     y = p.y + 6;
+                    if (L.battle != null) { // battle: a carried shell hits the rival it touches
+                        Player f = L.battle.touching(this, p, null);
+                        if (f != null) {
+                            L.battle.shellHit(this, f);
+                            breakApart();
+                            return;
+                        }
+                    }
                     for (int i = 0; i < L.ents.size(); i++) {
                         Entity e = L.ents.get(i);
                         if (e == this || e.dead || !(e.enemy || e.boss) || !overlaps(e)) continue;

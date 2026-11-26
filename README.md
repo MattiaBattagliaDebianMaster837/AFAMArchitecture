@@ -5,6 +5,8 @@
 **Capo d'Orlando**, **Paceco**, **Barcellona Pozzo di Gotto** (finita sotto il ghiaccio) e **Naso**. Poi comincia il
 **vero gioco**: 3 mondi all'**Università di Palermo (Unipa)**, dove ad aspettarti all'uscita c'è il **Prof. Giovanni Garbo**
 di Teoria dei Segnali, che con i suoi segnali aleatori ha messo sottosopra la Sicilia.
+C'è anche la **modalità battaglia**, in stile Smash Bros: scegli il tuo personaggio, i tuoi avversari e l'arena,
+e ve le date con le stesse mosse della storia.
 I protagonisti sono tutti e 5 i personaggi, disegnati in pixel art a partire dalle loro foto: **Mattia Battaglia**, **Giuseppe Mandanici**,
 **Francesco Inzerillo**, **Andrea Sapienza** e **Paolo Zingales**.
 
@@ -16,6 +18,7 @@ I protagonisti sono tutti e 5 i personaggi, disegnati in pixel art a partire dal
 | ![Mappa](docs/screenshots/mappa.png) | ![Livello 1-1](docs/screenshots/livello.png) |
 | ![Le quattro città](docs/screenshots/citta.png) | ![La storia](docs/screenshots/storia.png) |
 | ![Unipa - Parcheggio](docs/screenshots/unipa.png) | ![Prof. Garbo](docs/screenshots/garbo.png) |
+| ![Battaglia](docs/screenshots/battaglia.png) | ![Scelta dell'arena](docs/screenshots/battaglia_arene.png) |
 
 ## Installazione
 1. Copia `release/Uniparty.apk` sul telefono (o scaricalo da GitHub).
@@ -170,6 +173,63 @@ trovi dentro) e i **blocchi U** di Unipa.
 |---|---|
 | ![Speciali](docs/screenshots/speciali.png) | ![Negozio](docs/screenshots/negozio.png) |
 
+## Modalità battaglia
+Al titolo si sceglie **STORIA** (tutto come prima) o **BATTAGLIA**. In battaglia:
+1. scegli **il tuo personaggio**;
+2. scegli **gli avversari** (da 1 a 4, li controlla il telefono), il **livello della CPU** (facile, normale, difficile)
+   e il numero di **vite** (da 1 a 5);
+3. scegli **l'arena** (ognuna ha la sua anteprima).
+
+| Avversari | Risultati |
+|---|---|
+| ![Avversari](docs/screenshots/battaglia_avversari.png) | ![Risultati](docs/screenshots/battaglia_risultati.png) |
+
+**Regole, come in Smash Bros**
+- Le mosse sono quelle della storia: corsa, salto, spin, wall jump, triplo salto, abilità **C** e mossa speciale.
+- Ogni colpo fa salire la **percentuale di danno** (in alto, per ogni personaggio). Più è alta, più lontano voli
+  quando ti colpiscono. Se esci dai bordi dell'arena perdi una **vita** e rientri dall'alto (per un attimo sei
+  invulnerabile). Vince l'ultimo che resta in gara.
+- **Per tornare sull'arena**: in aria **B** fa uno spin in più, una volta per salto (si ricarica quando atterri o
+  scivoli su una parete), con una spinta nella direzione che premi. Se scivoli lungo il fianco dell'arena, B ti fa
+  risalire lungo il muro e rientrare sopra il bordo.
+- Saltare sulla testa di un avversario lo colpisce (con lo spin di più).
+- La barra della **mossa speciale** si riempie colpendo gli altri, e le speciali colpiscono gli avversari:
+  il super pugno di Mattia, gli scagnozzi di Giuseppe, il Tocco di Re Mida di Francesco, il totem di fuoco di
+  Andrea, il pallone gigante di Paolo.
+
+| Personaggio | Abilità C in battaglia |
+|---|---|
+| Mattia | Pugno, anche doppio: 9% e una bella spinta |
+| Giuseppe | Pistola: 3 colpi, si ricarica in poco più di 3 secondi, 9% a colpo |
+| Francesco | Banconote tutt'intorno (3% a chi è vicino) e la moneta che rimbalza (6%) |
+| Andrea | Mazza totem: 9% e una spinta forte; **rispedisce indietro i proiettili** degli altri, più forti |
+| Paolo | Pallone con i rimbalzi: 8% |
+
+**Power-up** (cadono dal cielo ogni tanto, come in Smash): **cuore** (−30% di danno), **stella** (invincibile per
+8 secondi, chi tocchi vola via), **fiore di fuoco** (+3% a ogni colpo), **fiore di ghiaccio** (i colpi congelano per
+un attimo), **pozione** (mossa speciale subito pronta), **guscio di tartaruga** (lo raccogli camminandoci contro e lo
+calci con C). Se ti colpiscono perdi il fiore.
+
+**Arene**
+
+| Arena | Caratteristica |
+|---|---|
+| Lungomare (Capo d'Orlando) | Piattaforme sopra l'arena, la più classica |
+| Saline di Paceco | Due piattaforme mobili ai lati, al tramonto |
+| Barcellona ghiacciata | Pavimento di ghiaccio: si scivola |
+| Castello di Naso | Pozza di lava in mezzo: ti lancia in aria e brucia, verso la riva più vicina |
+| Aula Magna | Nastri trasportatori che spingono verso il vuoto |
+| Terrazza di Unipa | Blocchi A/B che appaiono e spariscono |
+| Piazzale di Unipa | Arena piatta, senza aiuti |
+
+I **CPU** usano la tecnica del proprio personaggio: Giuseppe spara quando è allineato, Francesco lancia monete e
+banconote da vicino, Andrea rimanda indietro i proiettili, Paolo calcia il pallone a distanza, Mattia si avvicina
+per il pugno. Prendono i power-up, evitano i bordi e la lava e, se vengono sbalzati via, provano a rientrare.
+Più è alto il livello, più sono veloci a reagire e precisi.
+
+Alla fine c'è la **classifica** (KO fatti, cadute, danni inflitti) con **RIVINCITA**, **CAMBIA SFIDA** e **MENU**.
+La battaglia non tocca i progressi della storia.
+
 ## Struttura del progetto
 ```
 app/AndroidManifest.xml
@@ -177,6 +237,7 @@ app/src/it/pixelquest/core/   motore di gioco in Java puro (nessuna dipendenza A
     Game, WorldMap, Level, Player, Ents (nemici/oggetti), Bosses, Hero, HeroArt (pixel art dei personaggi),
     Uni/UniBosses/UniArt (nemici, gusci, boss e grafica dei mondi di Unipa),
     TownArt (sfondi delle quattro città: Capo d'Orlando, Paceco, Barcellona P.G., Naso),
+    Battle/Cpu/BattleMenu (modalità battaglia: regole e arene, avversari controllati dal telefono, schermate),
     Art/Theme (grafica procedurale), Gfx/Font (renderer software), Audio/Sfx/Music (sintetizzatore chiptune)
 app/src/it/pixelquest/game/   parte Android: MainActivity, GameView (SurfaceView, touch, AudioTrack)
 levels/levels.txt             i livelli in formato testo (convertiti in Levels.java da tools/genlevels.py)
@@ -212,4 +273,6 @@ saltano meno (Mattia) e corrono più piano (Andrea). Non dice niente sulla diffi
 java -DbotFrom=16 -DbotHero=3 -DbotHeroes=5 -cp /tmp/pq it.pixelquest.desktop.Sim /tmp/shots bot   # Unipa con Andrea
 java -cp /tmp/pq it.pixelquest.desktop.Sim /tmp/shots maptest   # la mappa avanza di un nodo a ogni pressione
 java -cp /tmp/pq it.pixelquest.desktop.Sim /tmp/shots cash      # banconote di Francesco contro il pallone di Paolo
+java -cp /tmp/pq it.pixelquest.desktop.Sim /tmp/shots battle 7 3 # battaglie CPU contro CPU su tutte le arene
+java -cp /tmp/pq it.pixelquest.desktop.Sim /tmp/shots recovery  # i CPU sbalzati fuori rientrano sull'arena
 ```
