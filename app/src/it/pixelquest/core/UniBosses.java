@@ -98,13 +98,13 @@ public final class UniBosses {
         }
 
         float ang() {
-            return (float) Math.sin(t * 0.032) * 1.15f;
+            return (float) StrictMath.sin(t * 0.032) * 1.15f;
         }
 
         @Override
         public void update() {
-            x = ax + (float) Math.sin(ang()) * len - 10;
-            y = ay + (float) Math.cos(ang()) * len - 10;
+            x = ax + (float) StrictMath.sin(ang()) * len - 10;
+            y = ay + (float) StrictMath.cos(ang()) * len - 10;
             Player p = L.player;
             if (t > 20 && life > 20 && Math.abs(p.cx() - cx()) < 13 && Math.abs(p.cy() - cy()) < 18) p.hurt(cx(), false);
             if (--life <= 0) dead = true;
@@ -194,7 +194,7 @@ public final class UniBosses {
             Player p = L.player;
             for (int k = 0; k < 8; k++) {
                 double a = t * 0.06 + k * Math.PI / 4;
-                float bx = owner.cx() + (float) Math.cos(a) * 36, by = owner.cy() + (float) Math.sin(a) * 30;
+                float bx = owner.cx() + (float) StrictMath.cos(a) * 36, by = owner.cy() + (float) StrictMath.sin(a) * 30;
                 if (Math.abs(p.cx() - bx) < 7 && Math.abs(p.cy() - by) < 12) p.hurt(bx, false);
             }
         }
@@ -203,7 +203,7 @@ public final class UniBosses {
         public void render(Gfx g, int cx, int cy) {
             for (int k = 0; k < 8; k++) {
                 double a = t * 0.06 + k * Math.PI / 4;
-                int bx = (int) (owner.cx() + Math.cos(a) * 36) - cx, by = (int) (owner.cy() + Math.sin(a) * 30) - cy;
+                int bx = (int) (owner.cx() + StrictMath.cos(a) * 36) - cx, by = (int) (owner.cy() + StrictMath.sin(a) * 30) - cy;
                 g.blit(UniArt.bits[k % 2], bx - 3, by - 4);
             }
         }
@@ -470,12 +470,12 @@ public final class UniBosses {
                 case 0: // chalk fan
                     if (--timer <= 0) {
                         Player p = p();
-                        double base = Math.atan2(p.cy() - (y + 14), p.cx() - cx());
+                        double base = StrictMath.atan2(p.cy() - (y + 14), p.cx() - cx());
                         int n = rage() > 0.5f ? 7 : 5;
                         for (int k = 0; k < n; k++) {
                             double ang = base + (k - (n - 1) / 2.0) * 0.22;
                             float sp = 2.6f + rage();
-                            Uni.UShot s = shot(cx() + facing * 10, y + 14, (float) Math.cos(ang) * sp, (float) Math.sin(ang) * sp, UniArt.chalk);
+                            Uni.UShot s = shot(cx() + facing * 10, y + 14, (float) StrictMath.cos(ang) * sp, (float) StrictMath.sin(ang) * sp, UniArt.chalk);
                             s.rotate = true;
                         }
                         Sfx.play(Sfx.SHOOT);
@@ -579,7 +579,7 @@ public final class UniBosses {
                         for (int k = 0; k < n; k++) {
                             double a = k * Math.PI * 2 / n + (sub % 2) * 0.2;
                             int d = (int) Math.round((a / (Math.PI / 4))) & 7;
-                            shot(cx(), y + 18, (float) Math.cos(a) * 2.6f, (float) Math.sin(a) * 2.6f, UniArt.arrow[d]);
+                            shot(cx(), y + 18, (float) StrictMath.cos(a) * 2.6f, (float) StrictMath.sin(a) * 2.6f, UniArt.arrow[d]);
                         }
                         Sfx.play(Sfx.CANNON);
                         state = 0;
@@ -880,12 +880,12 @@ public final class UniBosses {
                     break;
                 case 1: // random signals: white-noise bursts
                     if (--timer <= 0) {
-                        double base = Math.atan2(p.cy() - (y + 14), p.cx() - cx());
+                        double base = StrictMath.atan2(p.cy() - (y + 14), p.cx() - cx());
                         int n = 9 + (int) (rage() * 5);
                         for (int k = 0; k < n; k++) {
                             double a = base + (rnd.nextFloat() - 0.5f) * 2.6f;
                             float sp = 1.3f + rnd.nextFloat() * (2.4f + rage());
-                            shot(cx() + facing * 8, y + 14, (float) Math.cos(a) * sp, (float) Math.sin(a) * sp, UniArt.noise[rnd.nextInt(UniArt.noise.length)]);
+                            shot(cx() + facing * 8, y + 14, (float) StrictMath.cos(a) * sp, (float) StrictMath.sin(a) * sp, UniArt.noise[rnd.nextInt(UniArt.noise.length)]);
                         }
                         Sfx.play(Sfx.CANNON);
                         timer = 34;
@@ -977,7 +977,7 @@ public final class UniBosses {
             // a little sine wave dances around him
             if (!defeated && fade > 40)
                 for (int k = 0; k < 30; k++) {
-                    int sx = (int) (cx() - 30 + k * 2) - cx, sy = (int) (y - 8 + Math.sin(k * 0.4 + t * 0.2) * 4) - cy;
+                    int sx = (int) (cx() - 30 + k * 2) - cx, sy = (int) (y - 8 + StrictMath.sin(k * 0.4 + t * 0.2) * 4) - cy;
                     g.psetA(sx, sy, 0xFF3AFF6A, fade / 2);
                 }
             super.render(g, cx, cy);

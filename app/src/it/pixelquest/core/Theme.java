@@ -158,7 +158,7 @@ public final class Theme {
         if (!down) for (int x = 0; x < T; x++) s.set(x, 15, dirtD);
         if (!up) {
             for (int x = 0; x < T; x++) {
-                int depth = 4 + (int) (Math.sin(x * 1.3 + mask) * 1.2 + 0.5f);
+                int depth = 4 + (int) (StrictMath.sin(x * 1.3 + mask) * 1.2 + 0.5f);
                 if (id == 1) depth = 3 + (x % 5 == 0 ? 1 : 0);
                 if (id >= 4) depth = 4;
                 for (int y = 0; y < depth; y++) s.set(x, y, y == 0 ? capL : y == depth - 1 ? capD : cap);
@@ -332,7 +332,7 @@ public final class Theme {
                 if (rnd(x, y + f, 9) < 0.15f) col = 0xFFFF7A2A;
                 if (rnd(x, y, 13) < 0.05f) col = 0xFFB02010;
                 if (top) {
-                    int wave = (int) (Math.sin((x + f * 4) * 0.8) * 1.5 + 2);
+                    int wave = (int) (StrictMath.sin((x + f * 4) * 0.8) * 1.5 + 2);
                     if (y < wave) col = 0;
                     else if (y < wave + 2) col = 0xFFFFD050;
                     else if (y < wave + 4) col = 0xFFFF9A30;
@@ -362,12 +362,12 @@ public final class Theme {
             if (id == 1) { // pyramids
                 int px = x % 170;
                 double p1 = Math.max(0, 70 - Math.abs(px - 85) * 0.9);
-                hf = 20 + p1 + Math.sin(t * 3) * 6;
+                hf = 20 + p1 + StrictMath.sin(t * 3) * 6;
             } else if (id == 2 || id == 3) { // sharp peaks
                 double a = Math.abs(((x * 3) % 128) - 64) / 64.0;
                 double b = Math.abs(((x * 5 + 40) % 128) - 64) / 64.0;
-                hf = 30 + (1 - a) * 60 + (1 - b) * 30 + Math.sin(t * 7) * 4;
-            } else hf = 50 + Math.sin(t * 2) * 22 + Math.sin(t * 5 + 1) * 12 + Math.sin(t * 11) * 4;
+                hf = 30 + (1 - a) * 60 + (1 - b) * 30 + StrictMath.sin(t * 7) * 4;
+            } else hf = 50 + StrictMath.sin(t * 2) * 22 + StrictMath.sin(t * 5 + 1) * 12 + StrictMath.sin(t * 11) * 4;
             int top = 140 - (int) hf;
             for (int y = Math.max(0, top); y < 140; y++) {
                 int c = farC;
@@ -384,16 +384,16 @@ public final class Theme {
                 if (tx % 4 == 0) far.set(x, 140 - th - 1, 0xFF2A0E18);
                 if ((tx == 66 || tx == 80) && true) for (int y = 140 - th + 10; y < 140 - th + 14; y++) far.set(x, y, 0xFFFF9A3A);
             }
-            double hn = 34 + Math.sin(t * 3 + 2) * 14 + Math.sin(t * 8) * 6;
-            if (id == 1) hn = 26 + Math.sin(t * 4) * 12 + Math.sin(t * 9 + 1) * 4;
+            double hn = 34 + StrictMath.sin(t * 3 + 2) * 14 + StrictMath.sin(t * 8) * 6;
+            if (id == 1) hn = 26 + StrictMath.sin(t * 4) * 12 + StrictMath.sin(t * 9 + 1) * 4;
             int nt = 110 - (int) hn;
             for (int y = Math.max(0, nt); y < 110; y++) near.set(x, y, y < nt + 3 ? nearL : nearC);
         }
         // decorative elements on near layer
         for (int k = 0; k < 12; k++) {
             int x0 = k * 43 + (hash(k, 1, 3) & 15);
-            int base = 110 - (int) (34 + Math.sin(x0 * 2 * Math.PI / W * 3 + 2) * 14 + Math.sin(x0 * 2 * Math.PI / W * 8) * 6) + 2;
-            if (id == 1) base = 110 - (int) (26 + Math.sin(x0 * 2 * Math.PI / W * 4) * 12 + Math.sin(x0 * 2 * Math.PI / W * 9 + 1) * 4) + 2;
+            int base = 110 - (int) (34 + StrictMath.sin(x0 * 2 * Math.PI / W * 3 + 2) * 14 + StrictMath.sin(x0 * 2 * Math.PI / W * 8) * 6) + 2;
+            if (id == 1) base = 110 - (int) (26 + StrictMath.sin(x0 * 2 * Math.PI / W * 4) * 12 + StrictMath.sin(x0 * 2 * Math.PI / W * 9 + 1) * 4) + 2;
             drawBgProp(near, x0, base, k);
         }
         if (id == 4 || id == 6) makeCityNear();
@@ -724,10 +724,10 @@ public final class Theme {
         g.circle(g.w - 46, 27, 10, 0xFF1A1236, 255);
         // searchlights
         for (int k = 0; k < 2; k++) {
-            double a = Math.sin(frame * 0.012 + k * 2) * 0.6 - Math.PI / 2;
+            double a = StrictMath.sin(frame * 0.012 + k * 2) * 0.6 - Math.PI / 2;
             int ox = (int) (g.w * (0.3f + 0.4f * k)), oy = H - 30;
             for (int d = 0; d < 200; d += 2) {
-                int x = ox + (int) (Math.cos(a) * d), y = oy + (int) (Math.sin(a) * d);
+                int x = ox + (int) (StrictMath.cos(a) * d), y = oy + (int) (StrictMath.sin(a) * d);
                 int wdt = 2 + d / 12;
                 g.fillA(x - wdt / 2, y, wdt, 2, 0xFFFFF4C0, 22);
             }
@@ -855,7 +855,7 @@ public final class Theme {
                 for (int a = 0; a < 6; a++)
                     for (int d = 0; d < 12; d++) {
                         double ang = a * Math.PI / 3 + 0.3;
-                        int lx = px + (int) (Math.cos(ang) * d), ly = H - 52 + (int) (Math.sin(ang) * d * 0.5 + d * d * 0.04);
+                        int lx = px + (int) (StrictMath.cos(ang) * d), ly = H - 52 + (int) (StrictMath.sin(ang) * d * 0.5 + d * d * 0.04);
                         if (lx >= 0 && lx < W && ly >= 0 && ly < H) { near.set(lx, ly, 0xFF2E8A3A); if (ly + 1 < H) near.set(lx, ly + 1, 0xFF1E6A2A); }
                     }
                 x += 6;

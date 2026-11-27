@@ -388,8 +388,8 @@ public final class HeroArt {
 
     /** Arm from shoulder at an angle (degrees, 0 = down, 90 = forward, 180 = up). */
     private static void arm(Sprite s, Look l, int sx, int sy, float deg, int len, boolean back, boolean fist) {
-        double a = Math.toRadians(deg);
-        float dx = (float) Math.sin(a), dy = (float) Math.cos(a);
+        double a = Det.rad(deg);
+        float dx = (float) StrictMath.sin(a), dy = (float) StrictMath.cos(a);
         float ex = sx + dx * len, ey = sy + dy * len;
         float mx = sx + dx * (len - 2), my = sy + dy * (len - 2);
         int sleeve = l.style == 0 ? (back ? l.yokeSh : l.yoke) : (back ? l.jacketSh : l.jacket);
@@ -495,14 +495,14 @@ public final class HeroArt {
         int len = extra == 1 ? 8 : 6;
         arm(s, l, 10, 13 + bob, fa, len, false, fist);
         if (extra == 3) { // gold coin in the hand
-            double a = Math.toRadians(fa);
-            int hx = Math.round(10 + (float) Math.sin(a) * 6), hy = Math.round(13 + bob + (float) Math.cos(a) * 6);
+            double a = Det.rad(fa);
+            int hx = Math.round(10 + (float) StrictMath.sin(a) * 6), hy = Math.round(13 + bob + (float) StrictMath.cos(a) * 6);
             block(s, hx - 1, hy - 3, 3, 3, 0xFFFFC830);
             plot(s, hx - 1, hy - 3, 0xFFFFF0A0);
         }
         if (extra == 2) { // pistol held forward
-            double a = Math.toRadians(fa);
-            int hx = Math.round(10 + (float) Math.sin(a) * 6), hy = Math.round(13 + bob + (float) Math.cos(a) * 6);
+            double a = Det.rad(fa);
+            int hx = Math.round(10 + (float) StrictMath.sin(a) * 6), hy = Math.round(13 + bob + (float) StrictMath.cos(a) * 6);
             block(s, hx - 1, hy - 2, 5, 2, 0xFF3A3A46);
             block(s, hx, hy - 2, 3, 1, 0xFF7C7C8C);
             block(s, hx - 1, hy, 2, 2, 0xFF2A2A33);

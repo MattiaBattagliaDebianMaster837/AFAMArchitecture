@@ -118,11 +118,28 @@ public final class Battle {
     public static final class Config {
         public int hero, level = 1, stocks = 3, arena;
         public final boolean[] rivals = new boolean[5];
+        /** Wi-Fi battle: the friend's hero (fighter 1) and the random seed shared by both phones */
+        public boolean net;
+        public int guestHero = -1;
+        public long seed;
 
         public int rivalCount() {
             int n = 0;
-            for (int i = 0; i < rivals.length; i++) if (rivals[i] && i != hero) n++;
+            for (int i = 0; i < rivals.length; i++) if (rivals[i] && i != hero && !(net && i == guestHero)) n++;
             return n;
+        }
+
+        public Config copy() {
+            Config c = new Config();
+            c.hero = hero;
+            c.level = level;
+            c.stocks = stocks;
+            c.arena = arena;
+            System.arraycopy(rivals, 0, c.rivals, 0, rivals.length);
+            c.net = net;
+            c.guestHero = guestHero;
+            c.seed = seed;
+            return c;
         }
     }
 
@@ -134,7 +151,13 @@ public final class Battle {
     public final ArrayList<Player> fighters = new ArrayList<>();
     final ArrayList<Cpu> cpus = new ArrayList<>();
     final Input[] inputs;
-    final Random rnd = new Random();
+    /** all the randomness of the match: seeded the same on both phones in a Wi-Fi battle */
+    final Random rnd;
+    /** which fighter is played on this phone (0 = who created the match, 1 = the friend who joined) */
+    public final int localIdx;
+    /** Wi-Fi link, or null */
+    public final Net net;
+    private final Input[] oneHuman = new Input[1];
     public int t, overT;
     public boolean over, humanLost;
     int itemT = 360;
@@ -144,8 +167,14 @@ public final class Battle {
     boolean[] safeCol;
 
     public Battle(Game game, Config cfg) {
+        this(game, cfg, 0, null);
+    }
+
+    public Battle(Game game, Config cfg, int localIdx, Net net) {
         this.game = game;
         this.cfg = cfg;
+        this.net = net;
+        this.rnd = cfg.seed != 0 ? new Random(cfg.seed) : new Random();
         this.arena = ARENAS[Math.max(0, Math.min(ARENAS.length - 1, cfg.arena))];
         LevelDef def = new LevelDef(arena.name, arena.world, arena.stage, arena.music, arena.rows);
         level = new Level(game, def, false);
@@ -154,10 +183,13 @@ public final class Battle {
         level.bannerT = 0;
         addFighter(cfg.hero, false, 0);
         int slot = 1;
-        for (int i = 0; i < cfg.rivals.length; i++) if (cfg.rivals[i] && i != cfg.hero) addFighter(i, true, slot++);
+        if (cfg.net && cfg.guestHero >= 0) addFighter(cfg.guestHero, false, slot++); // the friend on the other phone
+        for (int i = 0; i < cfg.rivals.length; i++)
+            if (cfg.rivals[i] && i != cfg.hero && !(cfg.net && i == cfg.guestHero)) addFighter(i, true, slot++);
         if (fighters.size() < 2) addFighter((cfg.hero + 1) % Hero.ALL.length, true, 1);
         inputs = new Input[fighters.size()];
-        level.player = fighters.get(0);
+        this.localIdx = Math.max(0, Math.min(fighters.size() - 1, localIdx));
+        level.player = fighters.get(this.localIdx);
         computeStage();
         float W = game.W;
         level.camX = (level.tw * T - W) / 2f;
@@ -231,8 +263,20 @@ public final class Battle {
     }
 
     // ------------------------------------------------------------------ update
+    /** The fighter played on this phone. */
+    public Player local() {
+        return fighters.get(localIdx);
+    }
+
     void update(Input human) {
+        oneHuman[0] = human;
+        update(oneHuman);
+    }
+
+    /** One frame. {@code humans}: the input of each human fighter, in order (host, friend). */
+    void update(Input[] humans) {
         Level L = level;
+        Input human = humans[0];
         t++;
         L.frame++;
         if (L.bannerT > 0) L.bannerT--;
@@ -249,9 +293,10 @@ public final class Battle {
             e.t++;
         }
         // fighters
+        int hi = 0;
         for (int i = 0; i < fighters.size(); i++) {
             Player f = fighters.get(i);
-            Input in = i == 0 ? human : cpus.get(i).think();
+            Input in = f.cpu ? cpus.get(i).think() : humans[Math.min(hi++, humans.length - 1)];
             if (countdown() || over) in = Player.NO_INPUT;
             inputs[i] = in;
             L.input = in;
@@ -398,7 +443,7 @@ public final class Battle {
 
     // ------------------------------------------------------------------ KO / respawn / end
     void ko(Player f) {
-        if (f.koT > 0 || f.out) return;
+        if (f.koT > 0 || f.out || over) return; // once the battle is decided nobody loses a life any more (double KO on the last frame)
         f.stocks--;
         f.falls++;
         if (f.lastHitBy != null && f.lastHitBy != f) f.lastHitBy.kos++;
@@ -454,12 +499,14 @@ public final class Battle {
     }
 
     private void checkEnd() {
-        Player human = fighters.get(0);
-        int left = 0;
-        for (Player p : fighters) if (!p.out) left++;
-        if (left <= 1 || human.out) {
+        int left = 0, humans = 0;
+        for (Player p : fighters) {
+            if (!p.out) left++;
+            if (!p.out && !p.cpu) humans++;
+        }
+        if (left <= 1 || humans == 0) {
             over = true;
-            humanLost = human.out;
+            humanLost = local().out;
             // places of those still in: more lives first, then less damage
             ArrayList<Player> in = new ArrayList<>();
             for (Player p : fighters) if (!p.out) in.add(p);
@@ -475,6 +522,22 @@ public final class Battle {
             game.audio.music(-1);
             Sfx.play(Sfx.GATE);
         }
+    }
+
+    /** State fingerprint, compared between the two phones in a Wi-Fi battle to detect a desync. */
+    int checksum() {
+        int h = 17;
+        for (Player p : fighters) {
+            h = h * 31 + Float.floatToIntBits(p.x);
+            h = h * 31 + Float.floatToIntBits(p.y);
+            h = h * 31 + Float.floatToIntBits(p.vx);
+            h = h * 31 + Float.floatToIntBits(p.vy);
+            h = h * 31 + Float.floatToIntBits(p.dmg);
+            h = h * 31 + p.stocks * 7 + p.koT;
+        }
+        int shots = 0;
+        for (Entity e : level.ents) if (!(e instanceof Ents.Particle)) shots++;
+        return h * 31 + shots;
     }
 
     public Player winner() {
@@ -527,7 +590,7 @@ public final class Battle {
             for (int i = 0; i < fighters.size(); i++) {
                 Player f = fighters.get(i);
                 if (!alive(f)) continue;
-                float wgt = i == 0 ? 2 : 1;
+                float wgt = i == localIdx ? 2 : 1;
                 sx += f.cx() * wgt;
                 n += wgt;
             }
@@ -546,7 +609,7 @@ public final class Battle {
             f.render(g, cx, cy);
             int col = SLOT_COLORS[f.slot % SLOT_COLORS.length];
             int mx = Math.round(f.cx()) - cx, my = Math.round(f.y) - cy - 12;
-            String tag = f.cpu ? "CPU" : "TU";
+            String tag = f.cpu ? "CPU" : i == localIdx ? "TU" : "AMICO";
             g.textC(tag, mx, my - 8, col, 0xFF000000, 1);
             g.fill(mx - 2, my, 5, 1, col);
             g.fill(mx - 1, my + 1, 3, 1, col);
@@ -585,7 +648,7 @@ public final class Battle {
             if (Gfx.textW(nm, 1) > sw - 8 - Math.min(5, f.stocks) * 6) nm = nm.substring(0, 3);
             g.textO(nm, sx + 3, 23, f.cpu ? 0xFFC0C0D8 : 0xFFFFFFFF, 0xFF000000, 1);
             for (int k = 0; k < Math.min(5, f.stocks); k++) g.circle(sx + sw - 8 - k * 6, 26, 2, col, 255);
-            if (!f.cpu) { // the special bar of the human, under the slot
+            if (i == localIdx) { // the special bar of this phone's hero, under the slot
                 int bw = sw - 6, fw = (int) (bw * Math.min(1f, f.energy / Player.ENERGY_MAX));
                 g.fill(sx + 3, 33, bw, 2, 0xFF2A2440);
                 g.fill(sx + 3, 33, fw, 2, f.energy >= Player.ENERGY_MAX && (t / 6) % 2 == 0 ? 0xFFFFFFFF : 0xFFFFC030);
@@ -629,7 +692,7 @@ public final class Battle {
             for (int r = 0; r < 8; r++) {
                 double a = r * Math.PI / 4 + t * 0.05;
                 for (int d = 6 + t; d < 14 + t * 3; d += 2)
-                    g.psetA(px + (int) (Math.cos(a) * d), py + (int) (Math.sin(a) * d), 0xFFFFF4C0, (int) (220 * (1 - k)));
+                    g.psetA(px + (int) (StrictMath.cos(a) * d), py + (int) (StrictMath.sin(a) * d), 0xFFFFF4C0, (int) (220 * (1 - k)));
             }
             if (t < 30) g.textC("KO!", px, py - 6, 0xFFFFFFFF, 0xFF000000, 2);
         }

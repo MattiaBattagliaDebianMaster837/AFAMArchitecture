@@ -10,6 +10,7 @@ import android.graphics.Rect;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
+import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -100,6 +101,24 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
             };
             Game g = new Game(498, 224, st);
             if (w > 0 && h > 0) g.resizePhysical(w, h);
+            g.platform = new Game.Platform() {
+                private WifiManager.MulticastLock lock;
+
+                /** Wi-Fi battle: some phones drop broadcast packets (how the two phones find each other) without this. */
+                public void netLock(boolean on) {
+                    try {
+                        if (lock == null) {
+                            WifiManager wm = (WifiManager) getContext().getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+                            if (wm == null) return;
+                            lock = wm.createMulticastLock("uniparty-battle");
+                            lock.setReferenceCounted(false);
+                        }
+                        if (on && !lock.isHeld()) lock.acquire();
+                        if (!on && lock.isHeld()) lock.release();
+                    } catch (Throwable ignored) {
+                    }
+                }
+            };
             game = g;
         }
         return game;

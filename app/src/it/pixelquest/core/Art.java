@@ -569,10 +569,10 @@ public final class Art {
         for (int y = 0; y < 15; y++)
             for (int x = 0; x < 15; x++) {
                 double dx = x - 7, dy = y - 7.5;
-                double a = Math.atan2(dy, dx) + Math.PI / 2;
+                double a = StrictMath.atan2(dy, dx) + Math.PI / 2;
                 double r = Math.sqrt(dx * dx + dy * dy);
-                double k = Math.cos(5 * a) * 0.5 + 0.5;
-                double rmax = 3.2 + 4.3 * Math.pow(k, 2.2);
+                double k = StrictMath.cos(5 * a) * 0.5 + 0.5;
+                double rmax = 3.2 + 4.3 * StrictMath.pow(k, 2.2);
                 if (r <= rmax) s.set(x, y, r < rmax - 2.5 ? c : c2);
             }
         s.set(5, 6, OUT);
@@ -667,7 +667,7 @@ public final class Art {
         Sprite s = new Sprite(18, 12);
         for (int y = 0; y < 12; y++)
             for (int x = 0; x < 18; x++) {
-                int wy = y + (int) Math.round(Math.sin((x + f * 3) * 0.6) * 1.2);
+                int wy = y + (int) Math.round(StrictMath.sin((x + f * 3) * 0.6) * 1.2);
                 if (wy < 0 || wy > 11) continue;
                 boolean chk = ((x / 3) + (wy / 3)) % 2 == 0;
                 s.set(x, y, chk ? 0xFFFFFFFF : 0xFF1A1A22);

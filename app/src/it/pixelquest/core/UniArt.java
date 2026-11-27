@@ -190,7 +190,7 @@ public final class UniArt {
         for (int y = 0; y < 14; y++)
             for (int x = 0; x < 14; x++) {
                 double dx = x - 6.5, dy = y - 6.5;
-                double u = dx * Math.cos(a) + dy * Math.sin(a) + 5, v = -dx * Math.sin(a) + dy * Math.cos(a) + 3.5;
+                double u = dx * StrictMath.cos(a) + dy * StrictMath.sin(a) + 5, v = -dx * StrictMath.sin(a) + dy * StrictMath.cos(a) + 3.5;
                 int iu = (int) Math.floor(u), iv = (int) Math.floor(v);
                 if (iu >= 0 && iv >= 0 && iu < base.w && iv < base.h && (base.get(iu, iv) >>> 24) != 0) s.set(x, y, 0xFFFFE040);
             }
@@ -324,7 +324,7 @@ public final class UniArt {
                     int ox = f == 0 ? 3 : 0, oy = f == 0 ? 30 : 13;
                     box(s, ox, oy, 10, 8, 0xFF3A3A44);
                     box(s, ox + 1, oy + 1, 8, 5, 0xFF0A2A12);
-                    for (int x = 0; x < 8; x++) s.set(ox + 1 + x, oy + 3 + (int) Math.round(Math.sin(x * 0.9) * 1.6), 0xFF3AFF6A);
+                    for (int x = 0; x < 8; x++) s.set(ox + 1 + x, oy + 3 + (int) Math.round(StrictMath.sin(x * 0.9) * 1.6), 0xFF3AFF6A);
                     break;
                 }
                 default:

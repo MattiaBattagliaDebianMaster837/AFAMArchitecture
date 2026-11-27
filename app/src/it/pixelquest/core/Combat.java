@@ -159,9 +159,9 @@ public final class Combat {
             float[] back = upg >= 2 ? new float[]{-35, -8, 8} : new float[]{-20, 6};
             for (int k = 0; k < fwd.length + back.length; k++) {
                 boolean behind = k >= fwd.length;
-                double a = Math.toRadians(behind ? back[k - fwd.length] : fwd[k]);
+                double a = Det.rad(behind ? back[k - fwd.length] : fwd[k]);
                 float s = behind ? sp * 0.8f : sp;
-                float vx = (float) Math.cos(a) * s * (behind ? -dir : dir), vy = (float) Math.sin(a) * s;
+                float vx = (float) StrictMath.cos(a) * s * (behind ? -dir : dir), vy = (float) StrictMath.sin(a) * s;
                 PShot p = new PShot(CASH, cx, cy, vx, vy, Art.banknote, 10, 7);
                 p.element = element;
                 p.dmg = 1;
@@ -311,7 +311,9 @@ public final class Combat {
                     }
                 }
             }
-            if (y > L.th * T + 40 || x < L.camX - 200 || x > L.camX + L.game.W + 200) dead = true;
+            if (L.battle != null) { // battle: the arena bounds (the camera differs from phone to phone)
+                if (y > L.th * T + 40 || x < -200 || x > L.tw * T + 200) dead = true;
+            } else if (y > L.th * T + 40 || x < L.camX - 200 || x > L.camX + L.game.W + 200) dead = true;
         }
 
         /** Battle: batted back by Andrea's bat, it now belongs to him and flies at the others. */
@@ -340,12 +342,12 @@ public final class Combat {
                 g.circle((int) px, (int) py, Math.max(w, h) / 2 + 3, element == ICE ? 0xFF8AE0FF : 0xFFFF8A2A, 90);
             switch (kind) {
                 case CASH:
-                    g.blitEx(spr, px, py, 1, Math.max(0.3f, Math.abs((float) Math.cos(rot))), (float) Math.sin(rot) * 0.5f, false,
+                    g.blitEx(spr, px, py, 1, Math.max(0.3f, Math.abs((float) StrictMath.cos(rot))), (float) StrictMath.sin(rot) * 0.5f, false,
                             life < 6 ? life * 40 : 255, element == FIRE && t % 4 < 2 ? 0xFFFFA040 : element == ICE && t % 4 < 2 ? 0xFFBFF0FF : 0);
                     break;
                 case COIN:
                 case FOUNTAIN: {
-                    float sx = (float) Math.cos(t * 0.45);
+                    float sx = (float) StrictMath.cos(t * 0.45);
                     g.blitEx(spr, px, py, Math.abs(sx) < 0.25f ? 0.25f : Math.abs(sx), 1, 0, false, 255,
                             element == FIRE && t % 4 < 2 ? 0xFFFFA040 : element == ICE && t % 4 < 2 ? 0xFFBFF0FF : 0);
                     break;
@@ -375,7 +377,7 @@ public final class Combat {
             super(x, y, 16);
             this.col = col;
             vy = -0.5f;
-            vx = (float) Math.sin(x * 13 + y) * 0.4f;
+            vx = (float) StrictMath.sin(x * 13 + y) * 0.4f;
         }
 
         @Override
@@ -406,14 +408,14 @@ public final class Combat {
             super.update();
             vy += 0.08f;
             vx *= 0.97f;
-            x += vx + (float) Math.sin(t * 0.3) * 0.6f;
+            x += vx + (float) StrictMath.sin(t * 0.3) * 0.6f;
             y += vy;
             rot += 0.15f;
         }
 
         @Override
         public void render(Gfx g, int cx, int cy) {
-            g.blitEx(Art.banknote, x - cx, y - cy, 1, Math.max(0.3f, Math.abs((float) Math.cos(rot))), (float) Math.sin(rot) * 0.4f,
+            g.blitEx(Art.banknote, x - cx, y - cy, 1, Math.max(0.3f, Math.abs((float) StrictMath.cos(rot))), (float) StrictMath.sin(rot) * 0.4f,
                     false, Math.max(0, 255 - Math.max(0, t - 25) * 12), 0);
         }
     }
@@ -516,7 +518,7 @@ public final class Combat {
 
         @Override
         public void update() {
-            float tx = p.cx() + side * 24 - w / 2f, ty = p.y - 6 + (float) Math.sin((t + side * 20) * 0.1) * 3;
+            float tx = p.cx() + side * 24 - w / 2f, ty = p.y - 6 + (float) StrictMath.sin((t + side * 20) * 0.1) * 3;
             x += (tx - x) * 0.18f;
             y += (ty - y) * 0.18f;
             Entity best = null;
@@ -572,7 +574,7 @@ public final class Combat {
 
         @Override
         public void update() {
-            float tx = p.cx() - w / 2f, ty = p.y - 44 + (float) Math.sin(t * 0.08) * 4;
+            float tx = p.cx() - w / 2f, ty = p.y - 44 + (float) StrictMath.sin(t * 0.08) * 4;
             x += (tx - x) * 0.15f;
             y += (ty - y) * 0.15f;
             if (t % 3 == 0) L.spawn(new Ember(x + (t * 7) % w, bottom(), 0xFFFF7A2A));

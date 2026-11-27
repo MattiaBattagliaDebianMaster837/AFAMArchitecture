@@ -126,7 +126,7 @@ public final class Gfx {
         if (s == null || Math.abs(scx) < 0.02f || Math.abs(scy) < 0.02f) return;
         cx += ox;
         cy += oy;
-        float cos = (float) Math.cos(ang), sin = (float) Math.sin(ang);
+        float cos = (float) StrictMath.cos(ang), sin = (float) StrictMath.sin(ang);
         float hw = s.w / 2f, hh = s.h / 2f;
         float ext = (float) Math.sqrt(hw * hw * scx * scx + hh * hh * scy * scy) + 1;
         int x0 = Math.max(0, (int) (cx - ext)), x1 = Math.min(w - 1, (int) (cx + ext));

@@ -680,7 +680,7 @@ public final class Level {
                 byte t = tiles[i];
                 if (t == EMPTY) continue;
                 int x = c * T - cx, y = r * T - cy;
-                if (bump[i] > 0) y -= (int) (Math.sin(bump[i] / 10.0 * Math.PI) * 5);
+                if (bump[i] > 0) y -= (int) (StrictMath.sin(bump[i] / 10.0 * Math.PI) * 5);
                 Sprite s = null;
                 switch (t) {
                     case GROUND: s = theme.ground[variant[i]]; break;

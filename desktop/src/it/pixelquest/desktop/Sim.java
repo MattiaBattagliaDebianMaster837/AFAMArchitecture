@@ -67,6 +67,17 @@ public class Sim {
         else if (sc.equals("recovery")) it.pixelquest.core.RecoveryCheck.run(g);
         else if (sc.equals("trace")) it.pixelquest.core.TraceCheck.run(g, Integer.parseInt(args[2]), Integer.parseInt(args[3]), Integer.parseInt(args[4]), Integer.getInteger("traceFrames", 60 * 20));
         else if (sc.equals("bpause")) it.pixelquest.core.BattleCheck.pause(g);
+        else if (sc.equals("lanshots")) it.pixelquest.core.NetCheck.screens(new it.pixelquest.core.NetCheck.Shot() {
+            public void save(it.pixelquest.core.Game gm, String name) {
+                try {
+                    gm.render();
+                    Png.save(gm.gfx, 2, out + "/" + name + ".png");
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
+        else if (sc.equals("lan")) it.pixelquest.core.NetCheck.run(args.length > 2 ? Float.parseFloat(args[2]) : 0f, args.length > 3 ? Integer.parseInt(args[3]) : 2);
         else if (sc.equals("bmenus")) {
             it.pixelquest.core.BattleCheck.menus(g, new it.pixelquest.core.BattleCheck.Shot() {
                 public void save(String name) {

@@ -102,7 +102,10 @@ public final class BattleCheck {
         g.touch.down(1, g.W / 2f + 60, 108);
         g.touch.up(1);
         for (int i = 0; i < 60; i++) g.tick();
-        System.out.println("after tapping BATTAGLIA: screen " + g.screen + " (10 = battle setup)");
+        System.out.println("after tapping BATTAGLIA: screen " + g.screen + " (10 = battle setup), step " + g.bmenu.step + " (-1 = mode)");
+        shot.save("bm_0b_mode");
+        g.input.keyA = true; g.tick(); g.input.keyA = false; // CONTRO IL TELEFONO
+        for (int i = 0; i < 20; i++) g.tick();
         shot.save("bm_1_hero");
         g.input.keyA = true; g.tick(); g.input.keyA = false;
         for (int i = 0; i < 30; i++) g.tick();

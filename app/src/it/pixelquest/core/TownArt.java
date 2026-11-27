@@ -237,7 +237,7 @@ final class TownArt {
         // smoke drifting to the right
         for (int k = 0; k < 7; k++) {
             int ph = (frame / 3 + k * 18) % 126;
-            int px = sx + ph / 3 + (int) (Math.sin((ph + k) * 0.1) * 2), py = sy - 2 - ph / 2;
+            int px = sx + ph / 3 + (int) (StrictMath.sin((ph + k) * 0.1) * 2), py = sy - 2 - ph / 2;
             int r = 2 + ph / 30;
             g.circle(px, py, r, power > 0 ? 0xFF4A3A44 : 0xFFE8E8EC, Math.max(0, (power > 0 ? 150 : 90) - ph));
         }
@@ -270,7 +270,7 @@ final class TownArt {
                 double a0 = frame * speed + m * 0.7;
                 for (int s = 0; s < 6; s++) {
                     double a = a0 + s * Math.PI / 3;
-                    float dx = (float) Math.cos(a), dy = (float) Math.sin(a);
+                    float dx = (float) StrictMath.cos(a), dy = (float) StrictMath.sin(a);
                     for (int d = 2; d <= len; d++) {
                         int x = cx + Math.round(dx * d), y = cy + Math.round(dy * d);
                         g.pset(x, y, rib);
@@ -289,14 +289,14 @@ final class TownArt {
             for (int k = 0; k < n; k++) {
                 float fx = k * 73.3f + frame * (0.25f + (k % 3) * 0.12f) - camX * (0.3f + (k % 4) * 0.12f);
                 float fy = k * 41.7f + frame * (0.45f + (k % 4) * 0.14f);
-                int x = wrap((int) (fx + Math.sin((frame + k * 13) * 0.03) * 6), g.w), y = wrap((int) fy, g.h);
+                int x = wrap((int) (fx + StrictMath.sin((frame + k * 13) * 0.03) * 6), g.w), y = wrap((int) fy, g.h);
                 if (k % 5 == 0) g.fillA(x, y, 2, 2, 0xFFFFFFFF, 220);
                 else g.psetA(x, y, 0xFFFFFFFF, 200);
             }
         } else if (w == 3 && st >= 2) { // embers and ash rising from the lava
             for (int k = 0; k < 40; k++) {
                 float fy = g.h - ((k * 53 + frame * (0.4f + (k % 3) * 0.2f)) % (g.h + 20));
-                int x = wrap((int) (k * 61 - camX * 0.6f + Math.sin((frame + k * 7) * 0.05) * 5), g.w);
+                int x = wrap((int) (k * 61 - camX * 0.6f + StrictMath.sin((frame + k * 7) * 0.05) * 5), g.w);
                 g.psetA(x, (int) fy, k % 4 == 0 ? 0xFF9A9090 : 0xFFFF8A3A, 180);
             }
         }
@@ -380,8 +380,8 @@ final class TownArt {
     private static void nebrodi(Sprite s, int back, int front, int dark) {
         for (int x = 0; x < FW; x++) {
             double t = x * 2 * Math.PI / FW;
-            int hb = 52 + (int) (Math.sin(t * 2 + 1) * 14 + Math.sin(t * 5) * 6);
-            int hf = 84 + (int) (Math.sin(t * 3 + 2) * 12 + Math.sin(t * 7 + 1) * 5);
+            int hb = 52 + (int) (StrictMath.sin(t * 2 + 1) * 14 + StrictMath.sin(t * 5) * 6);
+            int hf = 84 + (int) (StrictMath.sin(t * 3 + 2) * 12 + StrictMath.sin(t * 7 + 1) * 5);
             for (int y = hb; y < FH; y++) s.set(x, y, y < hb + 2 ? Gfx.shade(back, 1.15f) : back);
             for (int y = hf; y < FH; y++) s.set(x, y, (hash(x / 5, y / 4, 6) & 7) == 0 ? dark : front);
         }
@@ -438,8 +438,8 @@ final class TownArt {
         int rock = st == 3 ? 0xFF1E2A50 : 0xFF5A72A8, snow = st == 3 ? 0xFF8A9AC8 : 0xFFF2F6FF;
         for (int x = 0; x < FW; x++) {
             double a = Math.abs(((x * 2) % 170) - 85) / 85.0, b = Math.abs(((x * 3 + 40) % 128) - 64) / 64.0;
-            double big = 0.65 + 0.35 * Math.sin(x * 2 * Math.PI / FW * 2 + 1);
-            int hf = 22 + (int) ((1 - a) * 50 * big + (1 - b) * 22 + Math.sin(x * 0.11) * 3 + Math.sin(x * 0.37) * 1.5);
+            double big = 0.65 + 0.35 * StrictMath.sin(x * 2 * Math.PI / FW * 2 + 1);
+            int hf = 22 + (int) ((1 - a) * 50 * big + (1 - b) * 22 + StrictMath.sin(x * 0.11) * 3 + StrictMath.sin(x * 0.37) * 1.5);
             int top = FH - 30 - hf;
             for (int y = Math.max(0, top); y < FH; y++) s.set(x, y, y < top + 9 + (x % 5) ? snow : rock);
         }
@@ -460,7 +460,7 @@ final class TownArt {
 
     private static void coastHills(Sprite s, int c, int top0) {
         for (int x = 0; x < FW; x++) {
-            int top = top0 + (int) (Math.sin(x * 0.02) * 10 + Math.sin(x * 0.07 + 1) * 4);
+            int top = top0 + (int) (StrictMath.sin(x * 0.02) * 10 + StrictMath.sin(x * 0.07 + 1) * 4);
             for (int y = top; y < FH; y++) s.set(x, y, c);
         }
     }
@@ -502,15 +502,15 @@ final class TownArt {
 
     private static void palm(Sprite s, int x, int base, int top) {
         for (int y = top; y < base; y++) {
-            int bend = (int) (Math.sin((base - y) * 0.04) * 3);
+            int bend = (int) (StrictMath.sin((base - y) * 0.04) * 3);
             ws(s, x + bend, y, (y % 4 == 0) ? 0xFF5A3A22 : 0xFF8A6A3A);
             ws(s, x + bend + 1, y, 0xFF6A4A2A);
         }
-        int tx = x + (int) (Math.sin((base - top) * 0.04) * 3);
+        int tx = x + (int) (StrictMath.sin((base - top) * 0.04) * 3);
         for (int a = 0; a < 7; a++)
             for (int d = 0; d < 14; d++) {
                 double ang = a * Math.PI / 3.5 + 0.2;
-                int lx = tx + (int) (Math.cos(ang) * d), ly = top + (int) (Math.sin(ang) * d * 0.45 + d * d * 0.035);
+                int lx = tx + (int) (StrictMath.cos(ang) * d), ly = top + (int) (StrictMath.sin(ang) * d * 0.45 + d * d * 0.035);
                 ws(s, lx, ly, 0xFF2E8A3A);
                 ws(s, lx, ly + 1, 0xFF1E6A2A);
             }
@@ -644,7 +644,7 @@ final class TownArt {
     static void agave(Sprite s, int x, int base) {
         for (int a = 0; a < 7; a++) {
             double ang = Math.PI + a * Math.PI / 6;
-            for (int d = 0; d < 11; d++) ws(s, x + (int) (Math.cos(ang) * d), base + (int) (Math.sin(ang) * d), (d % 3 == 0) ? 0xFF5A8A9A : 0xFF7AAAB0);
+            for (int d = 0; d < 11; d++) ws(s, x + (int) (StrictMath.cos(ang) * d), base + (int) (StrictMath.sin(ang) * d), (d % 3 == 0) ? 0xFF5A8A9A : 0xFF7AAAB0);
         }
     }
 
@@ -950,7 +950,7 @@ final class TownArt {
                 {258, 22, 12}, {322, 10, 5}, {380, 26, 22}};
         for (int[] k : cones)
             for (int y = 0; y < k[2]; y++) {
-                int hw = (int) (k[1] * Math.pow((y + 1) / (float) k[2], 0.8));
+                int hw = (int) (k[1] * StrictMath.pow((y + 1) / (float) k[2], 0.8));
                 for (int x = -hw; x <= hw; x++) s.set(k[0] + x, 39 - k[2] + 1 + y, x < -hw / 3 && y < k[2] / 2 ? hi : c);
             }
         // Vulcano's crater notch
@@ -974,9 +974,9 @@ final class TownArt {
         for (int x = 0; x < W; x++) {
             int h;
             if (x < 22) h = x * 2 + 2;
-            else if (x < 96) h = 44 + (int) (Math.sin((x - 22) / 74.0 * Math.PI) * 12);
+            else if (x < 96) h = 44 + (int) (StrictMath.sin((x - 22) / 74.0 * Math.PI) * 12);
             else if (x < 140) h = 44 - (int) ((x - 96) * 0.78f);
-            else h = 10 + (int) (Math.sin(x * 0.07) * 2);
+            else h = 10 + (int) (StrictMath.sin(x * 0.07) * 2);
             for (int y = HY - h; y < HY; y++) {
                 int c = 0xFF8A7864;
                 if ((y + x / 3) % 7 == 0) c = 0xFF6E5E4E; // rock strata
@@ -1037,7 +1037,7 @@ final class TownArt {
         Sprite s = new Sprite(W, H);
         for (int x = 0; x < W; x++) {
             double u = (x - 120) / 120.0;
-            int h = (int) (78 * Math.max(0, 1 - Math.pow(Math.abs(u), 1.6)) + Math.sin(x * 0.2) * 1.5);
+            int h = (int) (78 * Math.max(0, 1 - StrictMath.pow(Math.abs(u), 1.6)) + StrictMath.sin(x * 0.2) * 1.5);
             if (Math.abs(u) < 0.22) h = Math.max(h, 74); // flat summit
             for (int y = H - h; y < H; y++) s.set(x, y, u < -0.1 && y < H - h + 12 ? hi : c);
         }
@@ -1061,7 +1061,7 @@ final class TownArt {
         for (int y = 30; y < 46; y++) for (int x = 41; x < 69; x++) s.set(x, y, stone); // drum
         for (int y = 32; y < 44; y += 4) for (int x = 44; x < 66; x += 5) { s.set(x, y, dark); s.set(x, y + 1, dark); }
         for (int y = 8; y < 31; y++) { // dome
-            int hw = (int) (15 * Math.sqrt(1 - Math.pow((30 - y) / 23.0, 2)));
+            int hw = (int) (15 * Math.sqrt(1 - StrictMath.pow((30 - y) / 23.0, 2)));
             for (int x = -hw; x <= hw; x++) s.set(55 + x, y, x < -hw / 3 ? 0xFFF4F8FF : x % 5 == 0 ? 0xFF9AA4B4 : 0xFFB8C2D0);
         }
         for (int y = 2; y < 9; y++) s.set(55, y, 0xFF5A5A66);
@@ -1163,7 +1163,7 @@ final class TownArt {
         Sprite s = new Sprite(W, H);
         int st = 0xFF3A2C30, stD = 0xFF2A1E24, rim = 0xFFC0603A;
         for (int y = 30; y < H; y++) for (int x = 40; x < 80; x++) { // keep
-            int broken = (int) (Math.abs(Math.sin(x * 0.7)) * 6);
+            int broken = (int) (Math.abs(StrictMath.sin(x * 0.7)) * 6);
             if (y < 30 + broken) continue;
             s.set(x, y, ((x / 5 + y / 5) % 2 == 0) ? st : stD);
         }

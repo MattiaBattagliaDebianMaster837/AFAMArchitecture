@@ -541,11 +541,11 @@ public final class Player extends Entity {
         if (hero.ability_ == Hero.COIN) {
             // Re Mida: a golden fountain of coins and banknotes in every direction
             if (specialT % 3 == 0) {
-                double a = -Math.PI / 2 + Math.sin(t * 0.7) * 1.25;
+                double a = -Math.PI / 2 + StrictMath.sin(t * 0.7) * 1.25;
                 float sp = 4.2f + (t * 7 % 10) * 0.25f;
-                shoot(Combat.PShot.fountain(cx(), y + 2, (float) Math.cos(a) * sp, (float) Math.sin(a) * sp));
+                shoot(Combat.PShot.fountain(cx(), y + 2, (float) StrictMath.cos(a) * sp, (float) StrictMath.sin(a) * sp));
             }
-            if (specialT % 5 == 0) L.spawn(new Combat.Banknote(cx(), y + 2, (float) Math.sin(t) * 2.5f, -3f - (t % 3)));
+            if (specialT % 5 == 0) L.spawn(new Combat.Banknote(cx(), y + 2, (float) StrictMath.sin(t) * 2.5f, -3f - (t % 3)));
             if (specialT % 4 == 0) L.spawn(new Ents.Sparkle(x + (t * 5) % 14 - 2, y + (t * 3) % 20));
             if (specialT % 12 == 0) Sfx.play(Sfx.COIN);
         }
@@ -902,14 +902,14 @@ public final class Player extends Entity {
         int dir = facing;
         float hx = px + dir * (actT == 0 ? -2 : 3), hy = py - (actT == 0 ? 13 : 12);
         float len = 8;
-        float cxp = hx + dir * (float) Math.sin(th) * len, cyp = hy - (float) Math.cos(th) * len;
+        float cxp = hx + dir * (float) StrictMath.sin(th) * len, cyp = hy - (float) StrictMath.cos(th) * len;
         int fl = power == Combat.FIRE ? 0xFFFF7A2A : power == Combat.ICE ? 0xFF8AE0FF : 0;
         g.blitEx(Art.batTotem, cxp, cyp, 1, 1, th * dir, dir < 0, 255, 0);
         if (fl != 0) g.blitEx(Art.batTotem, cxp, cyp, 1, 1, th * dir, dir < 0, 90, fl);
         if (actT > 5 && actT <= 14) { // swoosh
             for (int k = 1; k <= 3; k++) {
                 float tk = th - k * 0.35f;
-                g.psetA((int) (hx + dir * Math.sin(tk) * 14), (int) (hy - Math.cos(tk) * 14), 0xFFFFFFFF, 160 - k * 40);
+                g.psetA((int) (hx + dir * StrictMath.sin(tk) * 14), (int) (hy - StrictMath.cos(tk) * 14), 0xFFFFFFFF, 160 - k * 40);
             }
         }
     }

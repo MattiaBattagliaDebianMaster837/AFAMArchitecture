@@ -301,7 +301,7 @@ public final class Bosses {
             if (state == 3 && !defeated) { // dizzy stars
                 for (int k = 0; k < 3; k++) {
                     double a = t * 0.15 + k * 2.1;
-                    g.blit(Art.sparkle[k % 2], (int) (cx() + Math.cos(a) * 14) - cx - 2, (int) (y - 8 + Math.sin(a) * 4) - cy);
+                    g.blit(Art.sparkle[k % 2], (int) (cx() + StrictMath.cos(a) * 14) - cx - 2, (int) (y - 8 + StrictMath.sin(a) * 4) - cy);
                 }
             }
         }
@@ -369,9 +369,9 @@ public final class Bosses {
             switch (state) {
                 case 0: { // fly in a wave pattern and drop sand
                     ang += 0.02f + rage() * 0.015f;
-                    float tx = arenaL + (arenaR - arenaL) * (0.5f + 0.5f * (float) Math.sin(ang));
+                    float tx = arenaL + (arenaR - arenaL) * (0.5f + 0.5f * (float) StrictMath.sin(ang));
                     x += (tx - x) * 0.05f;
-                    y += (baseY + (float) Math.sin(ang * 3) * 14 - y) * 0.08f;
+                    y += (baseY + (float) StrictMath.sin(ang * 3) * 14 - y) * 0.08f;
                     face();
                     if (--timer <= 0 && Math.abs(p().cx() - cx()) < 60) {
                         L.spawn(new Ents.Shot(cx(), bottom(), 0, 1, Ents.Shot.SAND));
@@ -630,16 +630,16 @@ public final class Bosses {
             face();
             switch (state) {
                 case 0: // hover & cast
-                    y += (float) Math.sin(t * 0.08) * 0.3f;
+                    y += (float) StrictMath.sin(t * 0.08) * 0.3f;
                     if (--timer <= 0) {
                         Sfx.play(Sfx.CANNON);
                         float dx = p().cx() - cx(), dy = p().cy() - (y + 12);
                         float d = (float) Math.sqrt(dx * dx + dy * dy) + 0.01f;
                         int n = rage() > 0.5f ? 5 : 3;
                         for (int k = 0; k < n; k++) {
-                            double a = Math.atan2(dy, dx) + (k - (n - 1) / 2.0) * 0.28;
+                            double a = StrictMath.atan2(dy, dx) + (k - (n - 1) / 2.0) * 0.28;
                             float sp = 1.8f + rage() * 0.8f;
-                            L.spawn(new Ents.Shot(cx() + facing * 10, y + 12, (float) Math.cos(a) * sp, (float) Math.sin(a) * sp, Ents.Shot.FIRE));
+                            L.spawn(new Ents.Shot(cx() + facing * 10, y + 12, (float) StrictMath.cos(a) * sp, (float) StrictMath.sin(a) * sp, Ents.Shot.FIRE));
                         }
                         timer = 55 - (int) (rage() * 15);
                         if (++casts >= 2 + (int) (rage() * 2)) {

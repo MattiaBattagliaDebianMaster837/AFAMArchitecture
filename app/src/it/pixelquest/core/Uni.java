@@ -50,7 +50,7 @@ public final class Uni {
             } else if (sine) {
                 x += vx;
                 baseY += vy;
-                y = baseY + (float) Math.sin(t * freq) * amp;
+                y = baseY + (float) StrictMath.sin(t * freq) * amp;
             } else {
                 vy = Math.min(vy + grv, 7);
                 x += vx;
@@ -365,7 +365,7 @@ public final class Uni {
             vx += (facing * 1.7f * speedK() - vx) * 0.05f;
             baseY += Math.signum(p.cy() - 8 - baseY) * 0.45f;
             x += vx;
-            y = baseY + (float) Math.sin(t * 0.12) * 14;
+            y = baseY + (float) StrictMath.sin(t * 0.12) * 14;
         }
 
         @Override
@@ -467,8 +467,8 @@ public final class Uni {
 
         @Override
         void act() {
-            x = x0 + (float) Math.sin(t * 0.02 * speedK()) * 70;
-            y = y0 + (float) Math.sin(t * 0.07) * 3;
+            x = x0 + (float) StrictMath.sin(t * 0.02 * speedK()) * 70;
+            y = y0 + (float) StrictMath.sin(t * 0.07) * 3;
             Player p = L.player;
             if (cool > 0) cool--;
             if (cool == 0 && Math.abs(p.cx() - cx()) < 18 && p.y > y && !p.dying) {
@@ -564,7 +564,7 @@ public final class Uni {
             if (p.dying) return;
             for (int k = 0; k < 3; k++) {
                 double a = angle() + k * Math.PI * 2 / 3;
-                float ex = ox + (float) Math.cos(a) * R, ey = oy + (float) Math.sin(a) * R * (k == 1 ? 0.5f : 1f);
+                float ex = ox + (float) StrictMath.cos(a) * R, ey = oy + (float) StrictMath.sin(a) * R * (k == 1 ? 0.5f : 1f);
                 if (Math.abs(p.cx() - ex) < 8 && Math.abs(p.cy() - ey) < 13) p.hurt(ex, false);
             }
         }
@@ -578,7 +578,7 @@ public final class Uni {
             g.circle(px, py - 2, 3, 0xFFE83A3A, 255);
             for (int k = 0; k < 3; k++) {
                 double a = angle() + k * Math.PI * 2 / 3;
-                int ex = px + (int) (Math.cos(a) * R), ey = py + (int) (Math.sin(a) * R * (k == 1 ? 0.5f : 1f));
+                int ex = px + (int) (StrictMath.cos(a) * R), ey = py + (int) (StrictMath.sin(a) * R * (k == 1 ? 0.5f : 1f));
                 g.circle(ex, ey, 6, 0xFF8AF0FF, 80);
                 g.circle(ex, ey, 4, 0xFF2AB0F0, 255);
                 g.circle(ex - 1, ey - 1, 1, 0xFFFFFFFF, 255);

@@ -96,7 +96,7 @@ public final class Ents {
             g.ring(px, py, r, 2, 0xFFFFFFFF, 255 - t * 22);
             for (int k = 0; k < 4; k++) {
                 double a = k * Math.PI / 2 + Math.PI / 4;
-                g.fill(px + (int) (Math.cos(a) * (r + 2)) - 1, py + (int) (Math.sin(a) * (r + 2)) - 1, 2, 2, 0xFFFFE040);
+                g.fill(px + (int) (StrictMath.cos(a) * (r + 2)) - 1, py + (int) (StrictMath.sin(a) * (r + 2)) - 1, 2, 2, 0xFFFFE040);
             }
         }
     }
@@ -247,7 +247,7 @@ public final class Ents {
 
         @Override
         public void render(Gfx g, int cx, int cy) {
-            int bob = (int) Math.round(Math.sin(L.frame * 0.08) * 2);
+            int bob = (int) Math.round(StrictMath.sin(L.frame * 0.08) * 2);
             g.blit(Art.gem[(L.frame / 8) % 4], (int) x - cx - 1, (int) y - cy + bob - 1, false, had ? 110 : 255, 0);
             if (!had && L.frame % 30 < 8) g.blit(Art.sparkle[0], (int) x - cx + 9, (int) y - cy - 2 + bob);
         }
@@ -456,8 +456,8 @@ public final class Ents {
         @Override
         public void update() {
             double ph = t * 2 * Math.PI / 240.0 + phase;
-            if (type == 1) x = x0 + (float) Math.sin(ph) * range;
-            else if (type == 2) y = y0 + (float) Math.sin(ph) * range;
+            if (type == 1) x = x0 + (float) StrictMath.sin(ph) * range;
+            else if (type == 2) y = y0 + (float) StrictMath.sin(ph) * range;
             else if (type == 3 && stepT >= 0) {
                 stepT++;
                 if (stepT > 28) {
@@ -954,7 +954,7 @@ public final class Ents {
             float ty = p.cy() - 6;
             baseY += Math.signum(ty - baseY) * 0.35f;
             x += vx;
-            y = baseY + (float) Math.sin(t * 0.09) * 12;
+            y = baseY + (float) StrictMath.sin(t * 0.09) * 12;
         }
 
         @Override

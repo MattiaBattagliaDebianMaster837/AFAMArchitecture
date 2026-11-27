@@ -38,6 +38,24 @@ public final class Game {
     /** battle mode screens and choices */
     final BattleMenu bmenu = new BattleMenu(this);
 
+    /** Things only the platform can do (Android: keep receiving the friend's broadcasts on Wi-Fi). */
+    public interface Platform {
+        void netLock(boolean on);
+    }
+
+    public Platform platform;
+
+    void netLock(boolean on) {
+        if (platform != null) platform.netLock(on);
+    }
+
+    // Wi-Fi battle in progress
+    private boolean netLeave;
+    private String netEnd;
+    private int netEndT;
+    private final Input[] netIn = {new Input(), new Input()};
+    private static final Input NEUTRAL = new Input();
+
     public Game(int w, int h, Save.Storage storage) {
         Hero.init();
         Art.init();
@@ -124,7 +142,7 @@ public final class Game {
                 audio.music(Music.MAP);
                 break;
             case PLAY:
-                if (param < 0) startBattle();
+                if (param < 0) startBattle(param);
                 else startLevel(param);
                 break;
             case BSETUP:
@@ -209,6 +227,14 @@ public final class Game {
 
     /** App went to background. */
     public void onPauseApp() {
+        if (bmenu.net != null) { // a Wi-Fi battle can't wait in the background: leave it (the friend is told)
+            bmenu.closeNet();
+            if (screen == PLAY || screen == BSETUP || screen == BRESULT || screen == PAUSE) {
+                screen = BSETUP;
+                bmenu.enterSetup(BattleMenu.S_MODE);
+                level = null;
+            }
+        }
         if (screen == PLAY && level != null && level.state == Level.PLAY) {
             screen = PAUSE;
             pauseCursor = 0;
@@ -223,6 +249,7 @@ public final class Game {
         screenT++;
         touch.enabled = screen == PLAY || screen == MAP;
         touch.showS = screen == PLAY && level != null;
+        if (screen == BSETUP || screen == BRESULT) bmenu.netTick();
         touch.sFill = level != null ? level.player.energy / Player.ENERGY_MAX : 0;
         touch.poll();
         input.latch(touch);
@@ -290,7 +317,7 @@ public final class Game {
         titleChoice = pick;
         Sfx.play(Sfx.CONFIRM);
         if (pick == 0) go(SELECT, 0); // story mode: everything as before
-        else go(BSETUP, 0); // battle mode
+        else go(BSETUP, BattleMenu.S_MODE); // battle mode: against the phone or with a friend over Wi-Fi
     }
 
     /** The STORIA / BATTAGLIA buttons on the title screen. */
@@ -349,6 +376,10 @@ public final class Game {
     }
 
     private void updatePlay() {
+        if (level.battle != null && level.battle.net != null) {
+            updateNetPlay(level.battle);
+            return;
+        }
         if (input.pauseP || input.backP) {
             if (level.state == Level.PLAY) {
                 screen = PAUSE;
@@ -365,12 +396,110 @@ public final class Game {
         }
     }
 
-    /** Battle mode: a new fight with the choices of the setup screens (also used for the rematch). */
-    private void startBattle() {
-        Battle b = new Battle(this, bmenu.cfg);
+    /**
+     * Battle mode: a new fight with the choices of the setup screens (also used for the rematch).
+     * -1 against the phone, -2 Wi-Fi match created here, -3 Wi-Fi match of the friend's phone.
+     */
+    private void startBattle(int param) {
+        Battle b;
+        Net n = bmenu.net;
+        Battle.Config c = param == -2 ? bmenu.netCfg : param == -3 && n != null ? n.startCfg : null;
+        if (param == -1 || n == null || c == null) b = new Battle(this, bmenu.cfg);
+        else {
+            b = new Battle(this, c, param == -2 ? 0 : 1, n);
+            n.beginMatch();
+        }
         level = b.level;
         bmenu.last = b;
+        netLeave = false;
+        netEnd = null;
+        netEndT = 0;
         touch.cancelAll();
+    }
+
+    private int[] leaveBtn(int k) {
+        return new int[]{W / 2 + (k == 0 ? -110 : 10), H / 2 + 6, 100, 22};
+    }
+
+    private static boolean inRect(int[] r, float x, float y) {
+        return x >= r[0] && x < r[0] + r[2] && y >= r[1] && y < r[1] + r[3];
+    }
+
+    /**
+     * Wi-Fi battle: lockstep. Every frame this phone's buttons are recorded for a frame a little in the future and
+     * sent; the battle advances only when the friend's buttons for that frame have arrived. Pausing does not stop
+     * the match for the friend: it asks whether to leave.
+     */
+    private void updateNetPlay(Battle b) {
+        Net n = b.net;
+        n.poll();
+        if (netEnd == null) {
+            if (n.error != null) netEnd = n.error;
+            else if (n.desync) netEnd = "LE DUE PARTITE NON SONO PIÙ UGUALI";
+        }
+        if (netEnd != null) {
+            if (++netEndT > 60 && (input.aP || !touch.taps.isEmpty() || input.backP)) {
+                bmenu.closeNet();
+                netEnd = null;
+                go(BSETUP, BattleMenu.S_MODE);
+            }
+            return;
+        }
+        if (netLeave) {
+            boolean leave = input.aP, stay = input.bP || input.pauseP || input.backP;
+            for (float[] tp : touch.taps) {
+                if (inRect(leaveBtn(0), tp[0], tp[1])) leave = true;
+                if (inRect(leaveBtn(1), tp[0], tp[1])) stay = true;
+            }
+            if (leave) {
+                bmenu.closeNet();
+                netLeave = false;
+                go(BSETUP, BattleMenu.S_MODE);
+                return;
+            }
+            if (stay) netLeave = false;
+        } else if (input.pauseP || input.backP) {
+            netLeave = true;
+            Sfx.play(Sfx.PAUSE);
+        }
+        n.pushLocal(netLeave || b.over ? NEUTRAL : input);
+        int steps = 0;
+        while (steps < 3 && n.canStep()) {
+            n.fill(netIn[0], netIn[1]);
+            b.update(netIn);
+            n.stepped(b);
+            steps++;
+        }
+        n.waiting = steps == 0 ? n.waiting + 1 : 0;
+        if (b.over && b.overT > 140) {
+            bmenu.last = b;
+            go(BRESULT, 0);
+        }
+    }
+
+    private void renderNetOverlay(Gfx g, Net n) {
+        if (n.rttMs >= 0) g.textO("PING " + Math.round(n.rttMs), W - 34 - Gfx.textW("PING " + Math.round(n.rttMs), 1), 28, 0xFFC0C0D8, 0xFF000000, 1);
+        String box = null, sub = null;
+        if (netEnd != null) {
+            box = netEnd;
+            sub = netEndT > 60 ? "TOCCA PER CONTINUARE" : "";
+        } else if (netLeave) box = "ESCI DALLA PARTITA?";
+        else if (n.waiting > 20 && !level.battle.over) box = "ATTENDO L'AMICO" + "...".substring(0, (frame / 20) % 4);
+        if (box == null) return;
+        int bw = Math.max(240, Gfx.textW(box, 1) + 30), bh = netLeave ? 62 : 40;
+        g.fillA(W / 2 - bw / 2, H / 2 - 24, bw, bh, 0xFF0A0A1A, 220);
+        g.rect(W / 2 - bw / 2, H / 2 - 24, bw, bh, 0xFFFFE070);
+        g.textC(box, W / 2, H / 2 - 14, 0xFFFFFFFF, 0xFF000000, 1);
+        if (sub != null) g.textC(sub, W / 2, H / 2, 0xFFC0C0D8, 0xFF000000, 1);
+        if (netLeave) {
+            String[] lb = {"ESCI", "CONTINUA"};
+            for (int k = 0; k < 2; k++) {
+                int[] r = leaveBtn(k);
+                g.fillA(r[0], r[1], r[2], r[3], k == 0 ? 0xFF8A1A2A : 0xFF1A1A2A, 230);
+                g.rect(r[0], r[1], r[2], r[3], 0xFFFFE070);
+                g.textC(lb[k], r[0] + r[2] / 2, r[1] + 8, 0xFFFFFFFF, 0xFF000000, 1);
+            }
+        }
     }
 
     // menu item ids
@@ -515,6 +644,7 @@ public final class Game {
             touch.visible = true;
             touch.draw(g, level.player.carrying != null ? "CALCIA" : level.player.hero.cLabel(), true, true);
         }
+        if (level.battle != null && level.battle.net != null) renderNetOverlay(g, level.battle.net);
     }
 
     private void renderPause(Gfx g) {
@@ -555,7 +685,7 @@ public final class Game {
         // confetti: it's a party
         int[] confetti = {0xFFFF4A6A, 0xFF4AE0FF, 0xFF7CFF5A, 0xFFFFE04A, 0xFFB07AFF, 0xFFFFA03A};
         for (int k = 0; k < 34; k++) {
-            int sx = (int) ((k * 83 + frame * (0.4f + (k % 3) * 0.25f) + Math.sin((frame + k * 19) * 0.04) * 8) % W);
+            int sx = (int) ((k * 83 + frame * (0.4f + (k % 3) * 0.25f) + StrictMath.sin((frame + k * 19) * 0.04) * 8) % W);
             int sy = (int) ((k * 47 + frame * (0.7f + (k % 4) * 0.2f)) % (gy + 10));
             boolean flat = ((frame / 6 + k) % 2) == 0;
             g.fill(sx, sy, flat ? 3 : 1, flat ? 1 : 3, confetti[k % confetti.length]);
@@ -564,12 +694,12 @@ public final class Game {
         String logo = "UNIPARTY";
         int sc = W >= 440 ? 6 : 5;
         int adv = Font.ADV * sc;
-        int lx = W / 2 - Gfx.textW(logo, sc) / 2, ly = 16 + (int) Math.round(Math.sin(frame * 0.05) * 2);
+        int lx = W / 2 - Gfx.textW(logo, sc) / 2, ly = 16 + (int) Math.round(StrictMath.sin(frame * 0.05) * 2);
         int[] lc = {0xFFFFD040, 0xFFFFD040, 0xFFFFD040, 0xFFFF5A8A, 0xFF4AD8FF, 0xFF7CF05A, 0xFFFFA03A, 0xFFC08AFF};
         for (int i = 0; i < logo.length(); i++) {
             String ch = logo.substring(i, i + 1);
             boolean party = i >= 3;
-            int dy = party ? (int) Math.round(Math.sin(frame * 0.12 + i * 0.9) * 3) : 0;
+            int dy = party ? (int) Math.round(StrictMath.sin(frame * 0.12 + i * 0.9) * 3) : 0;
             g.text(ch, lx + i * adv + 3, ly + dy + 4, 0xFF2A0A14, sc, 255);
             g.textO(ch, lx + i * adv, ly + dy, lc[i], party ? 0xFF1A1440 : 0xFF8A1A2A, sc);
         }
@@ -585,7 +715,7 @@ public final class Game {
         if (titleHeroes == null) titleHeroes = new Sprite[n][HeroArt.FRAMES];
         for (int i = 0; i < n; i++) {
             int phase = (frame + i * 29) % 150;
-            float hop = phase < 28 ? (float) Math.sin(phase / 28.0 * Math.PI) * 22 : 0;
+            float hop = phase < 28 ? (float) StrictMath.sin(phase / 28.0 * Math.PI) * 22 : 0;
             int f = hop > 0 ? (phase < 14 ? HeroArt.JUMP : HeroArt.FALL) : HeroArt.RUN0 + (frame / 5 + i * 2) % 4;
             if (titleHeroes[i][f] == null) titleHeroes[i][f] = Hero.ALL[i].frames[f].scaled(2);
             Sprite s = titleHeroes[i][f];
@@ -600,14 +730,14 @@ public final class Game {
         for (int k = 0; k < 2; k++) {
             int[] r = titleButton(k);
             boolean sel = k == titleChoice;
-            int pulse = sel ? (int) Math.round(Math.sin(frame * 0.15) * 1) : 0;
+            int pulse = sel ? (int) Math.round(StrictMath.sin(frame * 0.15) * 1) : 0;
             g.fillA(r[0] + 2, r[1] + 3, r[2], r[3], 0xFF000000, 90);
             g.fillA(r[0], r[1] - pulse, r[2], r[3], k == 0 ? 0xFF2A5AB0 : 0xFF8A1A2A, sel ? 240 : 170);
             g.rect(r[0], r[1] - pulse, r[2], r[3], sel ? 0xFFFFE070 : 0xFFFFFFFF);
             if (sel) g.rect(r[0] + 1, r[1] + 1 - pulse, r[2] - 2, r[3] - 2, 0xFFFFE070);
             g.textC(modes[k], r[0] + r[2] / 2, r[1] + 5 - pulse, sel ? 0xFFFFE070 : 0xFFFFFFFF, 0xFF000000, 2);
         }
-        g.text("V1.8", W - 28, H - 10, 0xFFFFFFFF, 1, 160);
+        g.text("V1.9", W - 28, H - 10, 0xFFFFFFFF, 1, 160);
     }
 
     private void renderSelect(Gfx g) {
@@ -843,7 +973,7 @@ public final class Game {
         int n = Hero.ALL.length;
         for (int i = 0; i < n; i++) {
             Sprite s = Hero.ALL[i].frames[(frame / 20 + i) % 2 == 0 ? HeroArt.VICTORY : HeroArt.FRONT].scaled(2);
-            int hx = W / 2 - n * 30 + i * 60 + 6, hy = 40 + (int) Math.abs(Math.sin((frame + i * 20) * 0.08) * 6);
+            int hx = W / 2 - n * 30 + i * 60 + 6, hy = 40 + (int) Math.abs(StrictMath.sin((frame + i * 20) * 0.08) * 6);
             g.blit(s, hx, hy);
             // graduation cap
             g.fill(hx + 4, hy - 4, 32, 4, 0xFF1A1A22);

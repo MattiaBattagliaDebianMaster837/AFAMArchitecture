@@ -98,7 +98,7 @@ public final class WorldMap {
             float k = Math.min(1, moveT / 18f);
             float sk = k * k * (3 - 2 * k);
             iconX = NODES[moveFrom][0] + (NODES[cur][0] - NODES[moveFrom][0]) * sk;
-            iconY = NODES[moveFrom][1] + (NODES[cur][1] - NODES[moveFrom][1]) * sk - (float) Math.sin(k * Math.PI) * 6;
+            iconY = NODES[moveFrom][1] + (NODES[cur][1] - NODES[moveFrom][1]) * sk - (float) StrictMath.sin(k * Math.PI) * 6;
             if (k >= 1) {
                 moveFrom = -1;
                 iconX = NODES[cur][0];
@@ -125,7 +125,7 @@ public final class WorldMap {
         for (int i = 0; i < NODES.length - 1; i++) {
             boolean open = i + 1 <= s.unlocked;
             int x0 = NODES[i][0], y0 = NODES[i][1], x1 = NODES[i + 1][0], y1 = NODES[i + 1][1];
-            float len = (float) Math.hypot(x1 - x0, y1 - y0);
+            float len = (float) StrictMath.hypot(x1 - x0, y1 - y0);
             for (float d = 6; d < len - 5; d += 6) {
                 int px = (int) (x0 + (x1 - x0) * d / len) - c, py = (int) (y0 + (y1 - y0) * d / len);
                 g.fill(px - 1, py - 1, 3, 3, Art.OUT);
@@ -157,7 +157,7 @@ public final class WorldMap {
         }
         // hero icon
         Sprite icon = game.hero().icon;
-        int bob = moveFrom < 0 ? (int) Math.round(Math.sin(t * 0.12) * 2) : 0;
+        int bob = moveFrom < 0 ? (int) Math.round(StrictMath.sin(t * 0.12) * 2) : 0;
         g.fillA((int) iconX - c - 6, (int) iconY + 1, 12, 3, 0xFF000000, 90);
         g.blit(icon, (int) iconX - c - icon.w / 2, (int) iconY - icon.h - 2 + bob);
 
@@ -203,7 +203,7 @@ public final class WorldMap {
         for (int y = 0; y < MH; y++)
             for (int x = 0; x < MW; x++) {
                 // wavy region borders
-                float bx = x + (float) Math.sin(y * 0.07) * 10;
+                float bx = x + (float) StrictMath.sin(y * 0.07) * 10;
                 int r = regionOf(bx);
                 int[] c = cols[r];
                 float n = Theme.rnd(x / 3, y / 3, 99 + r);
@@ -212,8 +212,8 @@ public final class WorldMap {
             }
         // sea at top & bottom edges (frames the map)
         for (int x = 0; x < MW; x++) {
-            int top = 22 + (int) (Math.sin(x * 0.05) * 4 + Math.sin(x * 0.013) * 5);
-            int bot = MH - 14 - (int) (Math.sin(x * 0.04 + 1) * 4);
+            int top = 22 + (int) (StrictMath.sin(x * 0.05) * 4 + StrictMath.sin(x * 0.013) * 5);
+            int bot = MH - 14 - (int) (StrictMath.sin(x * 0.04 + 1) * 4);
             for (int y = 0; y < top; y++) s.set(x, y, y > top - 3 ? 0xFF8AD0F0 : ((x + y * 3) % 23 == 0 ? 0xFF6ABEEA : 0xFF3A8AD0));
             for (int y = bot; y < MH; y++) s.set(x, y, y < bot + 2 ? 0xFF8AD0F0 : ((x * 2 + y) % 19 == 0 ? 0xFF6ABEEA : 0xFF3A8AD0));
         }
@@ -233,7 +233,7 @@ public final class WorldMap {
         stampScaled(s, Theme.get(3).town().nasoTown(), 1060, 120, 0.28f);
         // lava from Stromboli flowing through Naso
         for (int y = 30; y < MH - 16; y++) {
-            int rx = 1010 + (int) (Math.sin(y * 0.06) * 30);
+            int rx = 1010 + (int) (StrictMath.sin(y * 0.06) * 30);
             for (int x = rx; x < rx + 5; x++) s.set(x, y, (x + y) % 5 == 0 ? 0xFFFFD050 : 0xFFE8501A);
         }
         // decorations
@@ -281,7 +281,7 @@ public final class WorldMap {
                 if (v < 2) {
                     for (int yy = -8; yy <= 0; yy++) s.set(x, y + yy, 0xFF8A6A3A);
                     for (int a = 0; a < 5; a++)
-                        for (int d = 0; d < 5; d++) s.set(x + (int) (Math.cos(a * 1.25) * d), y - 9 + (int) (Math.sin(a * 1.25) * d * 0.5 + d * 0.3), 0xFF2E8A3A);
+                        for (int d = 0; d < 5; d++) s.set(x + (int) (StrictMath.cos(a * 1.25) * d), y - 9 + (int) (StrictMath.sin(a * 1.25) * d * 0.5 + d * 0.3), 0xFF2E8A3A);
                 } else for (int xx = -3; xx <= 3; xx++) { s.set(x + xx, y, 0xFF8A5A30); s.set(x + xx, y - 2, 0xFF8A5A30); }
                 return;
             case 5: // inside: desks and books
@@ -309,7 +309,7 @@ public final class WorldMap {
                 else { // palm
                     for (int yy = -8; yy <= 0; yy++) s.set(x, y + yy, 0xFF8A6A3A);
                     for (int a = 0; a < 5; a++)
-                        for (int d = 0; d < 5; d++) s.set(x + (int) (Math.cos(a * 1.25) * d), y - 9 + (int) (Math.sin(a * 1.25) * d * 0.5 + d * 0.3), 0xFF2E8A3A);
+                        for (int d = 0; d < 5; d++) s.set(x + (int) (StrictMath.cos(a * 1.25) * d), y - 9 + (int) (StrictMath.sin(a * 1.25) * d * 0.5 + d * 0.3), 0xFF2E8A3A);
                 }
                 break;
             case 1: // Paceco: salt pans, salt heaps, windmills

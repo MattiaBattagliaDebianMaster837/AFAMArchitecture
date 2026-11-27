@@ -230,6 +230,36 @@ Più è alto il livello, più sono veloci a reagire e precisi.
 Alla fine c'è la **classifica** (KO fatti, cadute, danni inflitti) con **RIVINCITA**, **CAMBIA SFIDA** e **MENU**.
 La battaglia non tocca i progressi della storia.
 
+### Battaglia in Wi-Fi (due telefoni)
+Dopo **BATTAGLIA** si sceglie **CONTRO IL TELEFONO** (come sopra) oppure si gioca con un amico, ognuno dal suo
+telefono. Basta essere sulla **stessa rete Wi-Fi**, oppure che un telefono faccia da **hotspot** e l'altro ci si
+colleghi: non serve internet e non consuma dati.
+
+1. Sul primo telefono: **CREA UNA PARTITA WI-FI**, scegli il personaggio, se vuoi aggiungi anche dei CPU, poi l'arena.
+   La schermata d'attesa mostra l'**indirizzo di questo telefono** (es. 192.168.1.5).
+2. Sull'altro telefono: **UNISCITI A UNA PARTITA WI-FI** e scegli il personaggio. La partita compare da sola nella
+   lista; se non compare (alcuni router non lasciano parlare i telefoni tra loro) tocca **INSERISCI INDIRIZZO** e
+   scrivi quello mostrato sul primo telefono. Se non funziona neanche così, usa l'hotspot di uno dei due.
+3. Quando l'amico è connesso, chi ha creato la partita tocca **COMBATTI!**.
+
+| Partita creata, amico connesso | Partite trovate |
+|---|---|
+| ![Wi-Fi](docs/screenshots/battaglia_wifi.png) | ![Cerca](docs/screenshots/battaglia_wifi_cerca.png) |
+
+- Sullo schermo sei **TU**, l'altro è **AMICO**, gli altri sono **CPU**; in alto si vede il **ping**.
+- Chi ha creato la partita decide arena, vite e CPU e può avviare la **rivincita** o **cambiare arena**;
+  l'amico aspetta e rientra da solo.
+- La pausa chiede se vuoi **uscire**: la partita non si ferma per l'altro. Se uno dei due esce o la connessione
+  cade per qualche secondo, l'altro telefono lo dice e torna al menu.
+- Servono **la stessa versione del gioco** su entrambi i telefoni.
+
+Come funziona: i due telefoni non si mandano le posizioni ma **solo i tasti premuti**, e ognuno simula la stessa
+identica partita (stessi calcoli, stessi numeri casuali, a prescindere dalla dimensione dello schermo). I tasti
+vengono applicati con un piccolo ritardo (da 2 a 6 fotogrammi, scelto in base al ping) così arrivano in tempo
+sull'altro telefono; ogni pacchetto ripete anche i tasti precedenti, quindi un pacchetto perso non conta.
+Ogni mezzo secondo i telefoni confrontano un'"impronta" della partita per accorgersi se qualcosa va storto.
+Rete: UDP, porta 47322; la ricerca usa un broadcast sulla rete locale.
+
 ## Struttura del progetto
 ```
 app/AndroidManifest.xml
@@ -238,6 +268,7 @@ app/src/it/pixelquest/core/   motore di gioco in Java puro (nessuna dipendenza A
     Uni/UniBosses/UniArt (nemici, gusci, boss e grafica dei mondi di Unipa),
     TownArt (sfondi delle quattro città: Capo d'Orlando, Paceco, Barcellona P.G., Naso),
     Battle/Cpu/BattleMenu (modalità battaglia: regole e arene, avversari controllati dal telefono, schermate),
+    Net (battaglia in Wi-Fi: ricerca della partita, connessione, scambio dei tasti in lockstep),
     Art/Theme (grafica procedurale), Gfx/Font (renderer software), Audio/Sfx/Music (sintetizzatore chiptune)
 app/src/it/pixelquest/game/   parte Android: MainActivity, GameView (SurfaceView, touch, AudioTrack)
 levels/levels.txt             i livelli in formato testo (convertiti in Levels.java da tools/genlevels.py)
@@ -265,6 +296,7 @@ java -cp /tmp/pq it.pixelquest.desktop.Sim /tmp/shots screens
 java -cp /tmp/pq it.pixelquest.desktop.Sim /tmp/shots bot      # verifica che ogni livello sia completabile
 java -cp /tmp/pq it.pixelquest.desktop.Sim /tmp/shots fuzz 4000
 java -cp /tmp/pq it.pixelquest.desktop.Sim /tmp/shots controls  # test di reattività dei comandi touch
+java -cp /tmp/pq it.pixelquest.desktop.Sim /tmp/shots lan 0.2 3 # due partite complete in Wi-Fi su localhost, 20% di pacchetti persi
 ```
 Il bot esplora ogni livello con la vera fisica del gioco (corse, salti, wall jump, tripli salti, piattaforme, molle,
 blocchi A/B a tempo) e verifica che si possa arrivare al traguardo e prendere le gemme, anche con i personaggi che
